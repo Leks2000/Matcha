@@ -81,6 +81,7 @@ export default function DashboardView({
 
   // Framer Motion gesture physics
   const dragX = useMotionValue(0);
+  const dragY = useMotionValue(0);
   const rotateValue = useTransform(dragX, [-200, 200], [-12, 12]);
   const opacityValue = useTransform(dragX, [-200, -100, 0, 100, 200], [0.5, 1, 1, 1, 0.5]);
   const dragXAbs = useTransform(dragX, x => Math.abs(x));
@@ -88,6 +89,22 @@ export default function DashboardView({
 
   // Track currently playing audio profile ID
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+
+  // Show Quest banner state (can be dismissed to avoid overlapping card deck)
+  const [showQuestBanner, setShowQuestBanner] = useState<boolean>(() => {
+    return localStorage.getItem('matcha_show_quest_banner') !== 'false';
+  });
+
+  // Smooth slide-in toast notification state
+  const [toastNotification, setToastNotification] = useState<string | null>(null);
+
+  const showToast = (message: string) => {
+    setToastNotification(message);
+    try { WebApp.HapticFeedback.notificationOccurred('success'); } catch(e){}
+    setTimeout(() => {
+      setToastNotification(null);
+    }, 3500);
+  };
 
   // Daily Cosmic Quest state model
   const [activeQuest, setActiveQuest] = useState<{
@@ -160,7 +177,9 @@ export default function DashboardView({
       };
 
       if (isCompleted) {
-        try { WebApp.HapticFeedback.notificationOccurred('success'); } catch (e) {}
+        showToast(appLanguage === 'ru'
+          ? `🌟 Квест "${prev.title}" выполнен! Нажмите, чтобы забрать +5 Sparks!`
+          : `🌟 Cosmic Quest "${prev.title}" completed! Claim your +5 Sparks!`);
       }
 
       const todayStr = new Date().toISOString().slice(0, 10);
@@ -197,9 +216,9 @@ export default function DashboardView({
       matcha_sparks: currentSparks + 5
     });
 
-    try {
-      WebApp.HapticFeedback.notificationOccurred('success');
-    } catch (e) {}
+    showToast(appLanguage === 'ru'
+      ? "🎉 +5 Sparks успешно начислено! Отличная калибровка!"
+      : "🎉 +5 Sparks successfully credited to your energy index!");
   };
 
   // Cleanup speak on card index change
@@ -630,7 +649,7 @@ export default function DashboardView({
   }, [currentIndex, activeProfile, currentUser?.tags]);
 
   // Execute card reactions
-  const executeSwipeWithHaptics = async (direction: 'left' | 'right') => {
+  const executeSwipeWithHaptics = async (direction: 'left' | 'right' | 'up') => {
     if (!activeProfile) return;
 
     // Update quest progress
@@ -638,7 +657,9 @@ export default function DashboardView({
 
     // Trigger haptic rumble
     try {
-       if (direction === 'right') {
+       if (direction === 'up') {
+         WebApp.HapticFeedback.notificationOccurred('success');
+       } else if (direction === 'right') {
          WebApp.HapticFeedback.impactOccurred('medium');
        } else {
          WebApp.HapticFeedback.impactOccurred('light');
@@ -648,21 +669,44 @@ export default function DashboardView({
     }
 
     try {
-      const apiDirection = direction === 'right' ? 'like' : 'pass';
-      const res = await recordSwipe(currentUser.id, activeProfile.id, apiDirection);
+      if (direction === 'left') {
+        await recordSwipe(currentUser.id, activeProfile.id, 'pass');
+      } else if (direction === 'up') {
+        const res = await recordSwipe(currentUser.id, activeProfile.id, 'like');
+        if (res.match) {
+          try {
+            WebApp.HapticFeedback.notificationOccurred('success');
+          } catch (e) {}
 
-      if (direction === 'right' && res.match) {
-        try {
-          WebApp.HapticFeedback.notificationOccurred('success');
-        } catch (e) {}
-
-        // Set matched user -> Triggers "it's a vibe ⚡" modal overlay that auto-closes after 1.5 seconds 
-        setMatchedUser(activeProfile);
+          // Set matched user -> Triggers overlay
+          setMatchedUser(activeProfile);
+          
+          onUpdateCurrentUser({
+            ...currentUser,
+            matchesToday: currentUser.matchesToday + 1
+          });
+        } else {
+          showToast(appLanguage === 'ru'
+            ? `💖 Вы поставили лайк ${activeProfile.name}! Векторы сошлись.`
+            : `💖 You liked ${activeProfile.name}! Vibe vectors aligned.`);
+        }
+      } else if (direction === 'right') {
+        // Swipe Right immediately clicks Like/Match AND redirects to write to them!
+        await recordSwipe(currentUser.id, activeProfile.id, 'like');
         
-        onUpdateCurrentUser({
-          ...currentUser,
-          matchesToday: currentUser.matchesToday + 1
-        });
+        const domain = activeProfile.username || activeProfile.id;
+        const tgLink = `https://t.me/${domain}`;
+        showToast(appLanguage === 'ru'
+          ? `💬 Открываем профиль/чат с @${domain}...`
+          : `💬 Connecting with @${domain}...`);
+        
+        setTimeout(() => {
+          try {
+            WebApp.openTelegramLink(tgLink);
+          } catch(e) {
+            window.open(tgLink, '_blank');
+          }
+        }, 800);
       }
     } catch (err) {
       console.error("Failed recording reaction:", err);
@@ -670,6 +714,7 @@ export default function DashboardView({
 
     setCurrentIndex(prev => prev + 1);
     dragX.set(0); // reset position
+    dragY.set(0); // reset position
   };
 
   // Redirection is handled explicitly in the Match Overlay with the new Send Telegram Write action button
@@ -687,12 +732,42 @@ export default function DashboardView({
   return (
     <div className="flex-grow flex flex-col justify-between items-center w-full h-full relative" id="swipe-view-container">
       
+      {/* Absolute Slide-in/Fade-out Toast Notification Overlay (Top Z-50) */}
+      <AnimatePresence>
+        {toastNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 12, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95, y: -20 }}
+            transition={{ type: "spring", stiffness: 350, damping: 25 }}
+            className="absolute top-1 px-4 py-2 bg-[#1A7A55] text-white rounded-xl shadow-xl z-50 text-[11px] font-extrabold flex items-center gap-2 max-w-[90%] pointer-events-none select-none text-center"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300/20 shrink-0" />
+            <span>{toastNotification}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Role Filter Selector */}
       <div className="w-full px-4 pt-3 pb-1 flex flex-col gap-1.5 shrink-0 z-30 select-none border-b border-black/[0.03] bg-white/45 backdrop-blur-xs" id="role-filter-section">
         <div className="flex items-center justify-between pb-1">
-          <span className="text-[8px] font-black text-[#1A7A55] uppercase tracking-widest font-mono pl-1">
-            // Filter by Role / Фильтр ролей
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[8px] font-black text-[#1A7A55] uppercase tracking-widest font-mono pl-1">
+              {appLanguage === 'ru' ? '// Фильтр ролей' : '// Filter by Role'}
+            </span>
+            {!showQuestBanner && activeQuest && (
+              <button
+                onClick={() => {
+                  try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){}
+                  setShowQuestBanner(true);
+                  localStorage.removeItem('matcha_show_quest_banner');
+                }}
+                className="text-[8px] font-black uppercase text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded-sm hover:bg-amber-500/20 transition cursor-pointer"
+              >
+                {appLanguage === 'ru' ? 'Показать квест 💫' : 'Show quest 💫'}
+              </button>
+            )}
+          </div>
           <button
             onClick={handleTriggerAiSuperMatch}
             disabled={isSuperMatching}
@@ -753,16 +828,29 @@ export default function DashboardView({
       </div>
 
       {/* Daily Cosmic Quest interactive panel */}
-      {activeQuest && (
+      {activeQuest && showQuestBanner && (
         <div className="w-full px-4 pt-1.5 pb-0.5 shrink-0 z-20" id="daily-quest-banner">
-          <div className={`rounded-2xl p-3 border transition-all duration-300 ${
+          <div className={`rounded-2xl p-3 border transition-all duration-300 relative ${
             activeQuest.rewardClaimed
               ? 'bg-zinc-100/60 border-black/[0.03] text-[#1A1A1A]/40'
               : activeQuest.completed
-              ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 animate-pulse'
+              ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 shadow-sm animate-pulse'
               : 'bg-[#00C896]/5 border-[#00C896]/15 text-[#1A7A55]'
           }`}>
-            <div className="flex items-center justify-between gap-1">
+            {/* Close Button to avoid card overlapping */}
+            <button
+              onClick={() => {
+                try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){}
+                setShowQuestBanner(false);
+                localStorage.setItem('matcha_show_quest_banner', 'false');
+              }}
+              className="absolute top-2 right-2 w-5 h-5 rounded-full bg-black/[0.04] hover:bg-black/[0.08] text-zinc-400 hover:text-zinc-600 flex items-center justify-center transition cursor-pointer"
+              title="Dismiss banner"
+            >
+              <X className="w-3 h-3" />
+            </button>
+
+            <div className="flex items-center justify-between gap-1 pr-5">
               <div className="flex items-center gap-2">
                 <span className="text-[14px]">
                   {activeQuest.rewardClaimed ? "✅" : activeQuest.completed ? "🎁" : "💫"}
@@ -865,26 +953,43 @@ export default function DashboardView({
                   {activeProfile && (
                     <motion.div
                       key={activeProfile.id}
-                      style={{ x: dragX, rotate: rotateValue, opacity: opacityValue, scale: scaleValue, touchAction: 'none' }}
-                      drag="x"
+                      style={{ x: dragX, y: dragY, rotate: rotateValue, opacity: opacityValue, scale: scaleValue, touchAction: 'none' }}
+                      drag={true}
                       dragConstraints={cardWrapperRef}
                       dragElastic={0.15}
                       onDragEnd={(e, info) => {
-                        if (info.velocity.x > 380 || info.offset.x > 110) {
+                        const absX = Math.abs(info.offset.x);
+                        const absY = Math.abs(info.offset.y);
+                        
+                        if (absY > absX && (info.velocity.y < -350 || info.offset.y < -100)) {
+                          executeSwipeWithHaptics('up');
+                        } else if (info.velocity.x > 350 || info.offset.x > 100) {
                           executeSwipeWithHaptics('right');
-                        } else if (info.velocity.x < -380 || info.offset.x < -110) {
+                        } else if (info.velocity.x < -350 || info.offset.x < -100) {
                           executeSwipeWithHaptics('left');
                         }
                       }}
                       className="absolute w-full h-full rounded-[32px] bg-gradient-to-br from-[#C8E6D4] to-[#A8D5B8] border border-black/[0.04] shadow-[0_16px_40px_rgba(26,122,85,0.06)] flex flex-col justify-between overflow-hidden cursor-grab active:cursor-grabbing z-20"
                       initial={{ scale: 0.95, y: 10, opacity: 0 }}
                       animate={{ scale: 1, y: 0, opacity: 1, transition: { type: "spring", stiffness: 300, damping: 25 } }}
-                      exit={{
-                        x: dragX.get() > 0 ? 380 : -380,
-                        opacity: 0,
-                        rotate: dragX.get() > 0 ? 12 : -12,
-                        scale: 0.9,
-                        transition: { duration: 0.22, ease: "easeOut" }
+                      exit={() => {
+                        const currentX = dragX.get();
+                        const currentY = dragY.get();
+                        if (Math.abs(currentY) > Math.abs(currentX) && currentY < 0) {
+                          return {
+                            y: -420,
+                            opacity: 0,
+                            scale: 0.9,
+                            transition: { duration: 0.22, ease: "easeOut" }
+                          };
+                        }
+                        return {
+                          x: currentX > 0 ? 380 : -380,
+                          opacity: 0,
+                          rotate: currentX > 0 ? 12 : -12,
+                          scale: 0.9,
+                          transition: { duration: 0.22, ease: "easeOut" }
+                        };
                       }}
                       id={`swipe-card-${activeProfile.id}`}
                     >
@@ -1117,27 +1222,27 @@ export default function DashboardView({
           <button
             onClick={() => executeSwipeWithHaptics('left')}
             className="w-[56px] h-[56px] rounded-full bg-white border-[1.5px] border-[#E0E0E0] text-[#1A1A1A] flex items-center justify-center transition active:scale-95 hover:bg-neutral-50 shadow-sm cursor-pointer"
-            title="Next vibe energy"
+            title="Next vibe energy (Pass left)"
             id="swipe-reject-btn"
           >
             <X className="h-5 w-5 stroke-[2.5]" />
           </button>
 
-          {/* Vibe Like ♥ central button: slightly bigger: width/height 72px, bg #00C896, white icon */}
+          {/* Vibe Like ♥ central button (Like Up): slightly bigger: width/height 72px, bg-[#00C896], white icon */}
           <button
-            onClick={() => executeSwipeWithHaptics('right')}
+            onClick={() => executeSwipeWithHaptics('up')}
             className="w-[72px] h-[72px] rounded-full bg-[#00C896] text-white flex items-center justify-center transition active:scale-95 hover:opacity-95 shadow-[0_4px_16px_rgba(0,200,150,0.25)] cursor-pointer"
-            title="Let's match!"
+            title="Like (Swipe up)"
             id="swipe-accept-btn"
           >
             <Heart className="h-7 w-7 fill-white text-white stroke-[2]" />
           </button>
 
-          {/* Send Instant Vibe 💬 button: bg #FFFFFF, border 1.5px solid #E0E0E0, icon тёмный #1A1A1A, height/width 56px */}
+          {/* Send Instant Vibe / Chat 💬 button (Swipe Right): bg #FFFFFF, border 1.5px solid #E0E0E0, icon тёмный #1A1A1A, height/width 56px */}
           <button
             onClick={() => executeSwipeWithHaptics('right')}
             className="w-[56px] h-[56px] rounded-full bg-white border-[1.5px] border-[#E0E0E0] text-[#1A1A1A] flex items-center justify-center transition active:scale-95 hover:bg-neutral-50 shadow-sm cursor-pointer"
-            title="Bridge message dialogue"
+            title="Open chat / profile (Swipe right)"
             id="swipe-chat-prompt"
           >
             <MessageSquare className="h-5 w-5 stroke-[2]" />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, ArrowRight, User, Check, RefreshCw, Zap, MessageSquare, Plus, Trash2, ArrowLeft, ArrowUpRight, Camera, Upload } from 'lucide-react';
+import { Sparkles, ArrowRight, User, Check, RefreshCw, Zap, Plus, Trash2, ArrowLeft, Camera } from 'lucide-react';
 
 import { generateAiFacts, onboardUser, parseOnboardingFromChat, compressAndResizeImage } from '../lib/api';
 import WebApp from '@twa-dev/sdk';
@@ -9,145 +9,153 @@ interface OnboardingViewProps {
   telegramId: number;
   telegramUsername: string;
   onComplete: (onboardedUser: any) => void;
+  appLanguage?: 'en' | 'ru';
 }
 
-const AVAILABLE_ROLES = [
-  "Student (Студент)",
-  "Working (Работаю)",
-  "Indie Specialist (Инди)",
-  "Creator / Designer",
-  "Founder / Builder",
-  "Just exploring (Ищу себя)"
-];
-
-const AVAILABLE_INTERESTS = [
-  "AI & Automation",
-  "Indie Hacking",
-  "Design",
-  "Content Creation",
-  "Startups",
-  "Gaming",
-  "Crypto",
-  "Music",
-  "Shitposting",
-  "Late Night Coding",
-  "Coffee",
-  "Deep Talks"
-];
-
-const getInstantLocalFacts = (role: string, tags: string[]): string[] => {
-  const tagFactMap: Record<string, string[]> = {
-    "AI & Automation": [
-      "has 4 active AI tool subscriptions",
-      "secretly believes AI will build their next startup",
-      "prompts AI to write their daily schedule"
+const TRANSLATIONS_ONBOARD = {
+  en: {
+    step1Of2: "Profile Setup • 1 of 2",
+    step2Of2: "Vibe Calibration • 2 of 2",
+    manual: "📝 MANUAL",
+    aiAutoFill: "⚡ AI AUTO-FILL",
+    instantProfiler: "Instant AI Profiler",
+    profilerDesc: "Write raw details about yourself below (your name, age, core study/job fields, lifestyle habits, matcha preference, etc.) and we'll extract everything!",
+    suggestionLabel: "💡 Suggestion Try:",
+    suggestionText: "Hi, I'm Alina, 20. I study media marketing, obsessed with iced coconut matches, post weird retro visual memes, and lose tracks at local rave parties.",
+    generateProfile: "Generate My Profile",
+    extracting: "Extracting profile...",
+    letDesign: "Let's design.",
+    setupIdentity: "Setup your builder identity parameters to align vibe deck.",
+    tapAvatar: "Tap avatar to update picture",
+    autoCompress: "Auto-compression included",
+    nameLabel: "Name (Human Name)",
+    ageLabel: "Age",
+    coreRole: "My Core Role",
+    customRoleDesc: "Or write custom role / hobby",
+    selectTags: "Select My Tags",
+    matchVibes: "Match vibes.",
+    vibeMetricsDesc: "Choose or write up to 6 custom tags matching your current vibe metrics.",
+    tagPlaceholder: "Type physical/meta tag (e.g. matcha, vinyl)...",
+    generateVibeDeck: "Generate Vibe Deck",
+    goBackEdit: "Go back and edit info",
+    buildingVibe: "building your vibe profile...",
+    tuningIndex: "Tuning internet culture frequency index with Gemini AI Engine...",
+    vibeSignatureGen: "Vibe signature generated",
+    yourAiProfile: "your ai profile",
+    factsDesc: "These short facts describe your unique builder energy based on tags & role:",
+    confirmContinue: "Confirm & Continue",
+    regenerate: "Regenerate",
+    skip: "Skip",
+    uploadBtn: "Upload",
+    customTagsHeader: "// My Custom Added Tags",
+    roles: [
+      "Student",
+      "Working Professional",
+      "Indie Specialist",
+      "Creator / Designer",
+      "Founder / Builder",
+      "Just exploring"
     ],
-    "Indie Hacking": [
-      "has 10 unfinished projects in local folder",
-      "spends hours choosing domain names for side ideas",
-      "can explain the startup bootstrap lore in 30s"
-    ],
-    "Design": [
-      "would argue endlessly about Tailwind versus CSS",
-      "zooms to 800% to check if pixels align",
-      "absolutely hates default purple gradients"
-    ],
-    "Content Creation": [
-      "knows exactly when a meme format is dead",
-      "prefers texting with memes over words",
-      "has folders of drafts that will never launch"
-    ],
-    "Startups": [
-      "dreams of seed rounds instead of counting sheep",
-      "ready to live on espresso, matcha, and pure hype",
-      "pitch-decks everyday life decisions to friends"
-    ],
-    "Gaming": [
-      "terminally online and speaks mostly in sarcasm",
-      "stays up until 3AM 'for just one last game'",
-      "builds elaborate in-game bases instead of sleeping"
-    ],
-    "Crypto": [
-      "lost 80% on dogecoins and bought right back in",
-      "checks crypto price charts every 15 minutes",
-      "has cold storage keys hidden under their bed"
-    ],
-    "Music": [
-      "buys rare vinyl records instead of grocery limits",
-      "creates oddly specific playlists for dog walks",
-      "has a digital synthesizer they don't play"
-    ],
-    "Shitposting": [
-      "has a folder of 4,000 cat memes, ready to share",
-      "post-ironic humor levels are completely off charts",
-      "communicates in custom sticker packages"
-    ],
-    "Late Night Coding": [
-      "regularly stays up until 3AM exploring code",
-      "physically cannot sleep without a podcast on",
-      "drinks espresso late at night with chill music"
-    ],
-    "Coffee": [
-      "thinks tea is warm leaf juice and prefers espresso",
-      "spent too much money on a fancy coffee grinder",
-      "physically cannot start the day without fresh brew"
-    ],
-    "Deep Talks": [
-      "convinced that lavender tea cures low battery",
-      "always ready for deep midnight talks in hubs",
-      "is deeply afraid of voice messages longer than 30s"
+    interests: [
+      "AI & Automation",
+      "Indie Hacking",
+      "Design",
+      "Content Creation",
+      "Startups",
+      "Gaming",
+      "Crypto",
+      "Music",
+      "Shitposting",
+      "Late Night Coding",
+      "Coffee",
+      "Deep Talks"
     ]
-  };
-
-  const pool: string[] = [];
-  tags.forEach(t => {
-    const list = tagFactMap[t];
-    if (list) {
-      pool.push(...list);
-    }
-  });
-
-  const lowRole = role.toLowerCase();
-  if (lowRole.includes('student') || lowRole.includes('студент')) {
-    pool.push(
-      "calculates min pass grade on exam morning",
-      "survives on cheap matcha and pure deadline adrenaline"
-    );
-  } else if (lowRole.includes('work') || lowRole.includes('работаю')) {
-    pool.push(
-      "mutes corporate team channels with extreme joy",
-      "counts hours remaining till Friday at 9AM Monday"
-    );
-  } else if (lowRole.includes('found') || lowRole.includes('build') || lowRole.includes('creator')) {
-    pool.push(
-      "checks product hunt launch page obsessively",
-      "has 5 active browser windows with 20 tabs each"
-    );
+  },
+  ru: {
+    step1Of2: "Настройка профиля • 1 из 2",
+    step2Of2: "Калибровка вайба • 2 из 2",
+    manual: "📝 ВРУЧНУЮ",
+    aiAutoFill: "⚡ AI ЗАПОЛНЕНИЕ",
+    instantProfiler: "Мгновенный AI Профиль",
+    profilerDesc: "Расскажите в свободной форме о себе ниже (ваше имя, возраст, сфера учебы/работы, привычки, любимая матча и др.), и мы выделим все самое важное!",
+    suggestionLabel: "💡 Попробуйте пример:",
+    suggestionText: "Привет, я Алина, мне 20 лет. Учусь медиа-маркетингу, обожаю кокосовый матча-латте, пощу странные ретро-визуальные мемы и танцую на рейвах.",
+    generateProfile: "Создать мой профиль",
+    extracting: "Извлекаем данные...",
+    letDesign: "Давайте сделаем стиль.",
+    setupIdentity: "Настройте параметры вашей личности для поиска людей на одной волне.",
+    tapAvatar: "Нажмите на аватар для загрузки",
+    autoCompress: "Авто-сжатие включено",
+    nameLabel: "Ваше имя",
+    ageLabel: "Возраст",
+    coreRole: "Основная роль",
+    customRoleDesc: "Или напишите увлечение / роль сами",
+    selectTags: "Выбрать теги",
+    matchVibes: "Матчим вайб.",
+    vibeMetricsDesc: "Выберите или впишите до 6 тегов, подходящих под ваше настроение.",
+    tagPlaceholder: "Впишите тег (например: матча, винил, код)...",
+    generateVibeDeck: "Создать колоду вайба",
+    goBackEdit: "Вернуться назад",
+    buildingVibe: "строим ваш вайб-профиль...",
+    tuningIndex: "Настраиваем индекс интернет-культуры с помощью нейросети...",
+    vibeSignatureGen: "Вайб-сигнатура создана",
+    yourAiProfile: "ваш AI профиль",
+    factsDesc: "Эти короткие факты описывают вашу уникальную энергию на основе тегов и роли:",
+    confirmContinue: "Подтвердить и продолжить",
+    regenerate: "Пересоздать",
+    skip: "Пропустить",
+    uploadBtn: "Загрузить",
+    customTagsHeader: "// Мои добавленные теги",
+    roles: [
+      "Студент",
+      "Специалист в компании",
+      "Инди-разработчик / Фрилансер",
+      "Креатор / Дизайнер",
+      "Сооснователь / Создатель",
+      "В поиске себя"
+    ],
+    interests: [
+      "ИИ и Автоматизация",
+      "Фриланс / Инди",
+      "Дизайн / Арт",
+      "Создание контента",
+      "Стартапы",
+      "Гейминг",
+      "Крипта",
+      "Музыка",
+      "Мемы / Юмор",
+      "Код по ночам",
+      "Матча / Кофе",
+      "Разговоры по душам"
+    ]
   }
-
-  const fallbacks = [
-    "can drink matcha at any hour of day",
-    "prefers texting with memes over actual language",
-    "never replies to texts in under 12 hours",
-    "has custom stickers for every friend group situation",
-    "physically cannot sleep without a podcast on",
-    "always ready for spontaneous matchas in local hubs"
-  ];
-
-  pool.push(...fallbacks);
-
-  const unique = Array.from(new Set(pool));
-  const shuffled = [...unique].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, 3);
 };
 
-export default function OnboardingView({ telegramId, telegramUsername, onComplete }: OnboardingViewProps) {
+const getInstantLocalFacts = (role: string, tags: string[], lang: 'en' | 'ru'): string[] => {
+  if (lang === 'ru') {
+    return [
+      `Осознанно выбирает увлечения из списка: ${tags.slice(0, 3).join(', ')}`,
+      `Позиционирует себя как ${role || 'создатель'} на цифровых радарах`,
+      `Уверен, что атмосфера Matcha — лучший катализатор для продуктивного дня`
+    ];
+  }
+  return [
+    `Curates vibe node dynamics using tag values: ${tags.slice(0, 3).join(', ')}`,
+    `Frequents digital clusters as a resident ${role || 'builder'} node`,
+    `Believes cold matcha is the premium energy converter for daily sprints`
+  ];
+};
+
+export default function OnboardingView({ telegramId, telegramUsername, onComplete, appLanguage }: OnboardingViewProps) {
+  const lang = appLanguage === 'ru' ? 'ru' : 'en';
+  const t = TRANSLATIONS_ONBOARD[lang];
+
   const [step, setStep] = useState(1);
-  const [name, setName] = useState("Jason");
+  const [name, setName] = useState("Alex");
   const [age, setAge] = useState<number>(22);
-  const [role, setRole] = useState("Student (Студент)");
+  const [role, setRole] = useState(t.roles[0]);
   const [customRoleText, setCustomRoleText] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>(["AI & Automation", "Indie Hacking", "Coffee"]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([t.interests[0], t.interests[1], t.interests[10]]);
   const [customTagsPool, setCustomTagsPool] = useState<string[]>([]);
   const [manualTagInput, setManualTagInput] = useState("");
   
@@ -158,7 +166,17 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
   // Profile image upload states
   const [photoUrl, setPhotoUrl] = useState<string>("");
   const [uploadLoading, setUploadLoading] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
+
+  const [isAiMode, setIsAiMode] = useState(false);
+  const [aiChatInput, setAiChatInput] = useState("");
+  const [aiChatLoading, setAiChatLoading] = useState(false);
+  const [aiChatError, setAiChatError] = useState("");
+
+  // Sync state if roles/interests change language
+  useEffect(() => {
+    setRole(t.roles[0]);
+    setSelectedTags([t.interests[0], t.interests[1], t.interests[10]]);
+  }, [appLanguage]);
 
   // Pull TG details automatically as default if they exist
   useEffect(() => {
@@ -194,205 +212,171 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
     }
   };
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      setUploadLoading(true);
-      try {
-        const base64 = await compressAndResizeImage(file);
-        setPhotoUrl(base64);
-        try { WebApp.HapticFeedback.notificationOccurred('success'); } catch(e){}
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setUploadLoading(false);
-      }
-    }
-  };
-
-  // AI-Onboarding Chat state
-  const [isAiMode, setIsAiMode] = useState(false);
-  const [aiChatInput, setAiChatInput] = useState("");
-  const [aiChatLoading, setAiChatLoading] = useState(false);
-  const [aiChatError, setAiChatError] = useState("");
-
-  // Trigger Groq facts generation when transitioning to Step 3
-  const generateFacts = async () => {
-    setFactsLoading(true);
-    try {
-      const activeRole = customRoleText.trim() ? customRoleText : role;
-      const facts = await generateAiFacts(activeRole, selectedTags);
-      setAiFacts(facts);
-    } catch (err) {
-      console.error(err);
-      const activeRole = customRoleText.trim() ? customRoleText : role;
-      setAiFacts(getInstantLocalFacts(activeRole, selectedTags));
-    } finally {
-      setFactsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (step === 3 && aiFacts.length === 0) {
-      generateFacts();
-    }
-  }, [step]);
-
-  const handleTagToggle = (tag: string) => {
+  const handleTagToggle = (tagItem: string) => {
+    try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){}
     setSelectedTags(prev => {
-      if (prev.includes(tag)) {
-        return prev.filter(t => t !== tag);
+      if (prev.includes(tagItem)) {
+        return prev.filter(x => x !== tagItem);
       } else {
-        if (prev.length >= 6) return prev; // tags range comfort
-        return [...prev, tag];
+        if (prev.length >= 7) return prev; // max 7
+        return [...prev, tagItem];
       }
     });
   };
 
   const handleAddCustomTag = () => {
-    const cleaned = manualTagInput.trim();
-    if (!cleaned) return;
-    
-    // Add to pool and select it automatically
-    if (!customTagsPool.includes(cleaned) && !AVAILABLE_INTERESTS.includes(cleaned)) {
-      setCustomTagsPool(prev => [...prev, cleaned]);
+    const clean = manualTagInput.trim();
+    if (!clean) return;
+    try { WebApp.HapticFeedback.impactOccurred('medium'); } catch(e){}
+    if (!customTagsPool.includes(clean)) {
+      setCustomTagsPool(prev => [...prev, clean]);
     }
-    
-    if (!selectedTags.includes(cleaned)) {
-      if (selectedTags.length < 6) {
-        setSelectedTags(prev => [...prev, cleaned]);
-      }
+    if (selectedTags.length < 7 && !selectedTags.includes(clean)) {
+      setSelectedTags(prev => [...prev, clean]);
     }
     setManualTagInput("");
-    try { WebApp.HapticFeedback.impactOccurred('light'); } catch (e) {}
   };
 
-  const handleRemoveCustomTag = (tag: string) => {
-    setCustomTagsPool(prev => prev.filter(t => t !== tag));
-    setSelectedTags(prev => prev.filter(t => t !== tag));
+  const handleRemoveCustomTag = (tagItem: string) => {
+    try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){}
+    setCustomTagsPool(prev => prev.filter(x => x !== tagItem));
+    setSelectedTags(prev => prev.filter(x => x !== tagItem));
   };
 
-  const handleTransitionToFacts = () => {
-    if (selectedTags.length < 2) return;
-    
-    // Speculatively generate facts instantly for instantaneous user transitions (0ms loading lag!)
-    const activeRole = customRoleText.trim() ? customRoleText : role;
-    const instantFacts = getInstantLocalFacts(activeRole, selectedTags);
-    setAiFacts(instantFacts);
-    
-    setStep(3);
-  };
-
-  // Chat-Onboarding NLP parser
+  // Conversational AI Onboarding extractor handler
   const handleAiChatSubmit = async () => {
-    const promptText = aiChatInput.trim();
-    if (!promptText) return;
-
+    if (!aiChatInput.trim()) return;
     setAiChatLoading(true);
     setAiChatError("");
     try {
-      const parsedData = await parseOnboardingFromChat(promptText);
+      WebApp.HapticFeedback.impactOccurred('heavy');
+    } catch (e) {}
+
+    try {
+      const parsedData = await parseOnboardingFromChat(aiChatInput);
       if (parsedData) {
-        setName(parsedData.name || "Jason");
-        setAge(parsedData.age || 22);
-        
-        // Match or set custom role
-        if (AVAILABLE_ROLES.includes(parsedData.role)) {
-          setRole(parsedData.role);
-          setCustomRoleText("");
-        } else {
-          setRole("");
-          setCustomRoleText(parsedData.role);
+        if (parsedData.name) {
+          setName(parsedData.name);
+        }
+        if (parsedData.age && typeof parsedData.age === 'number') {
+          setAge(parsedData.age);
+        }
+        if (parsedData.role) {
+          // If custom, assign to state
+          const matchedRole = t.roles.find(r => r.toLowerCase().includes(parsedData.role.toLowerCase()));
+          if (matchedRole) {
+            setRole(matchedRole);
+          } else {
+            setCustomRoleText(parsedData.role);
+            setRole("");
+          }
+        }
+        if (parsedData.tags && Array.isArray(parsedData.tags)) {
+          setSelectedTags(parsedData.tags.slice(0, 6));
         }
 
-        // Set tags
-        setSelectedTags(parsedData.tags || []);
-        // Also put custom tags in custom tag list to let them render and customize
-        const customAdded = (parsedData.tags || []).filter(t => !AVAILABLE_INTERESTS.includes(t));
-        setCustomTagsPool(customAdded);
+        // Generate immediate AI facts based on what we parsed
+        const generated = await generateAiFacts(parsedData.role || 'Creator', parsedData.tags || ['Design']);
+        if (generated && generated.length > 0) {
+          setAiFacts(generated);
+        } else {
+          setAiFacts(getInstantLocalFacts(parsedData.role || 'Creator', parsedData.tags || ['Design'], lang));
+        }
 
-        // Populate generated facts instantly
-        setAiFacts(parsedData.ai_facts && parsedData.ai_facts.length === 3 ? parsedData.ai_facts : []);
-
-        try { WebApp.HapticFeedback.notificationOccurred('success'); } catch (e) {}
-        
-        // Go straight to step 3 to view generated profile card facts representing them
+        // Go straight to step 3 to let user confirm extracted results
         setStep(3);
       } else {
-        setAiChatError("Could not extract details. Try again with more words!");
+        setAiChatError(lang === 'ru' ? "Не удалось распознать данные. Пожалуйста, попробуйте сформулировать иначе." : "Could not process facts. Please provide more details about your name, age, and interests.");
       }
-    } catch (e) {
-      console.error(e);
-      setAiChatError("Groq AI API is heavily loaded. Try entering details manually!");
+    } catch (err) {
+      console.warn("Llama chatbot parsing errored out, matching offline rules:", err);
+      // Failover safely
+      setAiFacts(getInstantLocalFacts('Developer', ['AI', 'Tech'], lang));
+      setStep(3);
     } finally {
       setAiChatLoading(false);
     }
   };
 
+  const handleTransitionToFacts = async () => {
+    setStep(3);
+    setFactsLoading(true);
+    try { WebApp.HapticFeedback.impactOccurred('medium'); } catch(e){}
+
+    const activeRole = customRoleText.trim() || role;
+    try {
+      const generated = await generateAiFacts(activeRole, selectedTags);
+      if (generated && generated.length > 0) {
+        setAiFacts(generated);
+      } else {
+        setAiFacts(getInstantLocalFacts(activeRole, selectedTags, lang));
+      }
+    } catch (err) {
+      console.error(err);
+      setAiFacts(getInstantLocalFacts(activeRole, selectedTags, lang));
+    } finally {
+      setFactsLoading(false);
+    }
+  };
+
+  const generateFacts = async () => {
+    setFactsLoading(true);
+    try { WebApp.HapticFeedback.impactOccurred('medium'); } catch(e){}
+    const activeRole = customRoleText.trim() || role;
+    try {
+      const generated = await generateAiFacts(activeRole, selectedTags);
+      if (generated && generated.length > 0) {
+        setAiFacts(generated);
+      } else {
+        setAiFacts(getInstantLocalFacts(activeRole, selectedTags, lang));
+      }
+    } catch (err) {
+      console.error(err);
+      setAiFacts(getInstantLocalFacts(activeRole, selectedTags, lang));
+    } finally {
+      setFactsLoading(false);
+    }
+  };
+
   const handleSubmit = async () => {
     setIsLoading(true);
-    const finalRole = customRoleText.trim() ? customRoleText : role;
-    
-    // Create immediate high-fidelity local user payload for instantaneous transition
-    const localUserObj = {
-      id: `user_${telegramId}`,
+    try { WebApp.HapticFeedback.notificationOccurred('success'); } catch(e){}
+
+    const finalRole = customRoleText.trim() || role || "Matcha Vibe Explorer";
+    const finalUserObject = {
       telegram_id: telegramId,
-      username: telegramUsername,
-      name,
-      age,
+      username: telegramUsername || `matcha_user_${telegramId}`,
+      name: name,
+      age: age,
       role: finalRole,
       tags: selectedTags,
-      ai_facts: aiFacts,
+      ai_facts: aiFacts.length > 0 ? aiFacts : getInstantLocalFacts(finalRole, selectedTags, lang),
+      bio: `${finalRole}. Interested in: ${selectedTags.slice(0, 3).join(', ')}.`,
       photo_url: photoUrl,
-      matcha_sparks: 15,
       streakDays: 14,
       matchesToday: 8,
       isPremium: false,
       priorityPoints: 0,
-      ref_code: `REF_${telegramId}`
+      matcha_sparks: 15,
+      voice_bio: ""
     };
 
-    // Trigger success haptic vibration instantly if available
-    try {
-      WebApp.HapticFeedback.notificationOccurred('success');
-    } catch (e) {}
-
-    // Complete transition immediately to bypass Supabase latency completely!
-    onComplete(localUserObj);
-    setIsLoading(false);
-
-    // Save to server database asynchronously in the background
-    onboardUser({
-      telegram_id: telegramId,
-      username: telegramUsername,
-      name,
-      age,
-      role: finalRole,
-      tags: selectedTags,
-      ai_facts: aiFacts,
-      photo_url: photoUrl
-    }).then((serverUser) => {
-      console.log("Onboarding synced successfully in background:", serverUser);
+    onboardUser(finalUserObject).then((res) => {
+      onComplete({
+        ...finalUserObject,
+        id: res?.id || `simulated_id_${telegramId}`,
+      });
     }).catch((err) => {
       console.warn("Background onboarding sync caught error, continued offline beautifully:", err);
+      onComplete({
+        ...finalUserObject,
+        id: `simulated_id_${telegramId}`,
+      });
     });
   };
 
   return (
-    <div className="flex-grow w-full max-w-sm mx-auto flex flex-col justify-between px-5 py-6 bg-[#F5F5F0] overflow-y-auto scrollbar-thin h-full" id="onboarding-root">
+    <div className="flex-grow w-full max-w-sm mx-auto flex flex-col justify-between px-5 py-6 bg-[#F5F5F0] overflow-y-auto scrollbar-none h-full" id="onboarding-root">
       
       <AnimatePresence mode="wait">
         {step === 1 && (
@@ -409,7 +393,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                 <div className="flex items-center gap-1.5 text-[#1A7A55]">
                   <Sparkles className="h-4.5 w-4.5 text-[#00C896]" />
                   <span className="text-[11px] font-black uppercase tracking-wider">
-                    Profile Setup • 1 of 2
+                    {t.step1Of2}
                   </span>
                 </div>
                 
@@ -418,25 +402,24 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                   <button
                     type="button"
                     onClick={() => setIsAiMode(false)}
-                    className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-1 cursor-pointer select-none ${
+                    className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-1 cursor-pointer select-none ${
                       !isAiMode 
-                        ? 'bg-white text-[#1A7A55] shadow-xs' 
+                        ? 'bg-white text-[#1A7A55] shadow-2xs' 
                         : 'text-[#6B7280] hover:text-[#1A1A1A]'
                     }`}
                   >
-                    <span>📝 MANUAL</span>
+                    <span>{t.manual}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsAiMode(true)}
-                    className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5 cursor-pointer select-none ${
+                    className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5 cursor-pointer select-none ${
                       isAiMode 
-                        ? 'bg-[#00c89c]/20 text-[#0f553a] border border-[#00c89c]/40 shadow-xs' 
+                        ? 'bg-[#00c89c]/20 text-[#0f553a] border border-[#00c89c]/40 shadow-2xs' 
                         : 'text-[#6B7280] hover:text-[#1A1A1A]'
                     }`}
                   >
-                    <Zap className={`w-3 h-3 ${isAiMode ? 'fill-[#0f553a] animate-pulse' : ''}`} />
-                    <span>AI AUTO-FILL</span>
+                    <span>{t.aiAutoFill}</span>
                   </button>
                 </div>
               </div>
@@ -450,11 +433,11 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                 >
                   <div className="space-y-1">
                     <h2 className="text-xl font-black text-[#1A1A1A] tracking-tight flex items-center gap-1.5">
-                      <span>Instant AI Profiler</span>
+                      <span>{t.instantProfiler}</span>
                       <span className="text-[10px] font-mono text-white font-extrabold bg-[#00C896] px-1.5 py-0.2 rounded shrink-0">Llama3</span>
                     </h2>
                     <p className="text-[12.5px] text-[#6B7280] leading-snug font-medium">
-                      Write raw details about yourself below (your name, age, core study/job fields, lifestyle habits, matcha preference, etc.) and we'll extract everything!
+                      {t.profilerDesc}
                     </p>
                   </div>
 
@@ -464,7 +447,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                       onChange={(e) => setAiChatInput(e.target.value)}
                       rows={5}
                       className="w-full p-3.5 bg-[#F5F5F0] border border-black/[0.05] rounded-2.5xl text-xs font-semibold text-[#1a1a1a] placeholder-[#A0A0A0] focus:outline-none focus:border-[#00C896] focus:bg-white transition resize-none leading-relaxed"
-                      placeholder="e.g. Alina, 21. Study design in Berlin, love vinyl records, electronic music, and drinking cold green matcha, sleeping late..."
+                      placeholder={lang === 'ru' ? "Например: Алина, 21. Учусь UI дизайну, обожаю виниловые пластинки, техно, пью банановый матча латте..." : "e.g. Alina, 21. Study design in Berlin, love vinyl records, electronic music, and drinking cold green matcha, sleeping late..."}
                     />
 
                     {aiChatError && (
@@ -476,14 +459,14 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
 
                     <div className="bg-[#E8F5EE]/50 border border-transparent p-3 rounded-2xl">
                       <p className="text-[10px] font-bold text-[#1A7A55] tracking-wider uppercase mb-1">
-                        💡 Suggestion Try:
+                        {t.suggestionLabel}
                       </p>
                       <button
                         type="button"
-                        onClick={() => setAiChatInput("Hi, I'm Alina, 20. I study media marketing, obsessed with iced coconut matches, post weird retro visual memes, and lose tracks at local rave parties.")}
-                        className="text-left text-[11px] text-zinc-600 font-medium hover:text-black italic"
+                        onClick={() => setAiChatInput(t.suggestionText)}
+                        className="text-left text-[11px] text-zinc-600 font-medium hover:text-black italic leading-normal"
                       >
-                        "Hi, I'm Alina, 20. I study media marketing, obsessed with iced coconut matches..." ➜
+                        "{t.suggestionText.slice(0, 75)}..." ➜
                       </button>
                     </div>
 
@@ -502,7 +485,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                       ) : (
                         <Zap className="h-4 w-4" />
                       )}
-                      <span>{aiChatLoading ? "Extracting profile..." : "Generate My Profile"}</span>
+                      <span>{aiChatLoading ? t.extracting : t.generateProfile}</span>
                     </button>
                   </div>
                 </motion.div>
@@ -511,16 +494,16 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                 <div className="space-y-4">
                   <div>
                     <h1 className="text-3xl font-black tracking-tight text-[#1A1A1A] font-display">
-                      Let's design.
+                      {t.letDesign}
                     </h1>
-                    <p className="text-[13.5px] text-[#6B7280] font-semibold mt-1">
-                      Setup your builder identity parameters to align vibe deck.
+                    <p className="text-[13.5px] text-[#6B7280] font-semibold mt-1 leading-normal">
+                      {t.setupIdentity}
                     </p>
                   </div>
 
                   <div className="space-y-4 pt-1">
                     {/* Minimalist Clickable Avatar Container */}
-                    <div className="flex flex-col items-center justify-center py-2 space-y-2">
+                    <div className="flex flex-col items-center justify-center py-1 space-y-2">
                       <div className="relative w-24 h-24 cursor-pointer group">
                         <input 
                           type="file" 
@@ -541,17 +524,17 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                             )}
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[9px] font-black uppercase transition tracking-wider">
                               <Camera className="w-4.5 h-4.5 mb-0.5 text-[#00C896]" />
-                              <span>Upload</span>
+                              <span>{t.uploadBtn}</span>
                             </div>
                           </div>
                         </label>
                       </div>
-                      <div className="text-center">
-                        <p className="text-[10px] text-[#6B7280] font-semibold">
-                          Tap avatar to update picture
+                      <div className="text-center select-none">
+                        <p className="text-[10.5px] text-[#6B7280] font-bold">
+                          {t.tapAvatar}
                         </p>
-                        <p className="text-[9px] text-[#A0A0A0] font-medium leading-none">
-                          Auto-compression included
+                        <p className="text-[9px] text-[#A0A0A0] font-medium mt-0.5 leading-none">
+                          {t.autoCompress}
                         </p>
                       </div>
                     </div>
@@ -560,7 +543,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                     <div className="grid grid-cols-3 gap-3">
                       <div className="col-span-2">
                         <label className="block text-[10px] font-black text-[#1A7A55] mb-1.5 uppercase tracking-wider">
-                          Name (Human Name)
+                          {t.nameLabel}
                         </label>
                         <div className="relative">
                           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400">
@@ -572,14 +555,14 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             className="w-full h-[52px] pl-10 pr-4 bg-white border border-black/[0.06] rounded-2xl text-[14px] font-bold text-[#1A1A1A] focus:outline-none focus:border-[#00C896] shadow-xs"
-                            placeholder="Alina"
+                            placeholder="Alex"
                           />
                         </div>
                       </div>
 
                       <div>
                         <label className="block text-[10px] font-black text-[#1A7A55] mb-1.5 uppercase tracking-wider text-center">
-                          Age
+                          {t.ageLabel}
                         </label>
                         <input
                           type="number"
@@ -597,10 +580,10 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                     {/* Pre-defined and Custom Role block */}
                     <div className="space-y-2">
                       <label className="block text-[10px] font-black text-[#1A7A55] uppercase tracking-wider">
-                        My Core Role
+                        {t.coreRole}
                       </label>
                       <div className="grid grid-cols-2 gap-2">
-                        {AVAILABLE_ROLES.map((r) => {
+                        {t.roles.map((r) => {
                           const isSelected = role === r && !customRoleText.trim();
                           return (
                             <button
@@ -610,7 +593,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                                 setRole(r);
                                 setCustomRoleText("");
                               }}
-                              className={`text-left px-4 py-2.5 rounded-2xl border text-[12px] font-black transition cursor-pointer min-h-[50px] flex items-center leading-tight ${
+                              className={`text-left px-3 py-2 rounded-2xl border text-[11px] font-black transition cursor-pointer min-h-[46px] flex items-center leading-tight ${
                                 isSelected
                                   ? 'bg-[#E8F5EE] border-[#00C896] text-[#1A7A55]'
                                   : 'bg-white border-black/[0.04] text-[#1A1A1A] hover:bg-white/[0.6]'
@@ -625,7 +608,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                       {/* Manual custom role text entry field */}
                       <div className="pt-1">
                         <label className="block text-[9.5px] font-mono text-[#6B7280] mb-1 uppercase tracking-wider">
-                          Or write completely custom role / hobby
+                          {t.customRoleDesc}
                         </label>
                         <input
                           type="text"
@@ -637,7 +620,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                           className={`w-full h-[46px] px-3.5 bg-white border rounded-xl text-xs font-bold focus:outline-none focus:border-[#00C896] ${
                             customRoleText.trim() ? 'border-[#00C896] bg-[#E8F5EE]/20' : 'border-black/[0.05]'
                           }`}
-                          placeholder="e.g. Retro Photographer, Matcha Enthusiast..."
+                          placeholder="e.g. Designer, Software Maker, Matcha Lover..."
                         />
                       </div>
                     </div>
@@ -655,7 +638,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                   className="w-full h-[54px] rounded-[100px] bg-[#00C896] text-white font-extrabold uppercase tracking-wider text-xs hover:opacity-95 transition active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                   id="continue-onboard-btn"
                 >
-                  <span>Select My Tags</span>
+                  <span>{t.selectTags}</span>
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
@@ -676,16 +659,16 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
               <div className="flex items-center gap-1.5 pt-2 text-[#1A7A55]">
                 <Sparkles className="h-4.5 w-4.5 text-[#00C896]" />
                 <span className="text-[11px] font-black uppercase tracking-wider">
-                  Vibe Calibration • 2 of 2
+                  {t.step2Of2}
                 </span>
               </div>
 
               <div>
                 <h1 className="text-3xl font-black tracking-tight text-[#1A1A1A] font-display">
-                  Match vibes.
+                  {t.matchVibes}
                 </h1>
                 <p className="text-[13.5px] text-[#6B7280] font-semibold mt-1">
-                  Choose or write up to 6 custom tags matching your current vibe metrics.
+                  {t.vibeMetricsDesc}
                 </p>
               </div>
 
@@ -702,7 +685,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                     }
                   }}
                   className="flex-1 bg-transparent px-2 text-xs font-bold text-[#1A1A1A] outline-none placeholder-[#A0A0A0]"
-                  placeholder="Type physical/meta tag (e.g. matcha, vinyl)..."
+                  placeholder={t.tagPlaceholder}
                 />
                 <button
                   type="button"
@@ -715,8 +698,8 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
 
               {/* Tag Selection list */}
               <div className="space-y-3">
-                <div className="flex flex-wrap gap-1.5 max-h-[170px] overflow-y-auto pr-1">
-                  {AVAILABLE_INTERESTS.map((interest) => {
+                <div className="flex flex-wrap gap-1.5 max-h-[190px] overflow-y-auto pr-1">
+                  {t.interests.map((interest) => {
                     const isSelected = selectedTags.includes(interest);
                     return (
                       <button
@@ -740,7 +723,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                 {customTagsPool.length > 0 && (
                   <div className="space-y-1">
                     <span className="text-[9px] font-mono text-[#1A7A55] uppercase tracking-wider block">
-                      // My Custom Added Tags
+                      {t.customTagsHeader}
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {customTagsPool.map((customTag) => {
@@ -784,7 +767,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                 }`}
                 id="generate-deck-btn"
               >
-                <span>Generate Vibe Deck</span>
+                <span>{t.generateVibeDeck}</span>
                 <Sparkles className="h-4 w-4" />
               </button>
               
@@ -793,7 +776,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                 className="w-full text-center text-xs font-bold text-[#6B7280] hover:text-[#1A1A1A] transition py-1 cursor-pointer flex items-center justify-center gap-1"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Go back and edit info</span>
+                <span>{t.goBackEdit}</span>
               </button>
             </div>
           </motion.div>
@@ -819,10 +802,10 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
 
                 <div className="space-y-2">
                   <h3 className="text-xl font-extrabold text-[#1A1A1A] font-display">
-                    building your vibe profile...
+                    {t.buildingVibe}
                   </h3>
                   <p className="text-xs text-[#6B7280] max-w-[240px] mx-auto leading-relaxed">
-                    Tuning internet culture frequency index with Groq Llama-3 AI Engine...
+                    {t.tuningIndex}
                   </p>
                 </div>
               </div>
@@ -832,27 +815,27 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                   <div className="flex items-center gap-1.5 pt-2 text-[#1A7A55]">
                     <Zap className="h-4.5 w-4.5 fill-[#00C896] text-[#00C896]" />
                     <span className="text-[11px] font-bold uppercase tracking-wider">
-                      Vibe signature generated
+                      {t.vibeSignatureGen}
                     </span>
                   </div>
 
                   <div>
                     <h1 className="text-3xl font-black tracking-tight text-[#1A1A1A] font-display">
-                      your ai profile
+                      {t.yourAiProfile}
                     </h1>
                     <p className="text-[13.5px] text-[#6B7280] mt-1 font-semibold leading-relaxed">
-                      These short facts describe your unique builder energy based on tags & role:
+                      {t.factsDesc}
                     </p>
                   </div>
 
                   {/* Facts container */}
                   <div className="bg-white border border-black/[0.04] p-5 rounded-3xl space-y-3.5 shadow-sm">
                     {aiFacts.map((fact, index) => (
-                      <div key={index} className="flex items-start gap-3">
-                        <span className="text-[12.5px] font-mono text-[#00C896] font-extrabold shrink-0 mt-0.5">
+                      <div key={index} className="flex items-start gap-4">
+                        <span className="text-[12.5px] font-mono text-[#00C896] font-extrabold shrink-0 mt-0.5 animate-pulse">
                           {index + 1}.
                         </span>
-                        <p className="text-[13.5px] text-[#1A1A1A] font-bold leading-tight">
+                        <p className="text-[13px] text-[#1A1A1A] font-extrabold leading-tight">
                           {fact}
                         </p>
                       </div>
@@ -864,10 +847,10 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                   <button
                     onClick={handleSubmit}
                     disabled={isLoading}
-                    className="w-full h-[54px] rounded-[100px] bg-[#00C896] text-white font-black uppercase tracking-wider text-xs flex items-center justify-center gap-2 shadow-xs hover:opacity-95 transition active:scale-[0.98] cursor-pointer"
+                    className="w-full h-[54px] rounded-[100px] bg-[#00C896] text-white font-black uppercase tracking-wider text-xs flex items-center justify-center gap-2 shadow-sm hover:opacity-95 transition active:scale-[0.98] cursor-pointer"
                     id="confirm-vibe-btn"
                   >
-                    <span>Confirm & Continue</span>
+                    <span>{t.confirmContinue}</span>
                     <ArrowRight className="h-4 w-4" />
                   </button>
 
@@ -878,7 +861,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                       className="h-[46px] rounded-[100px] border border-black/[0.08] bg-white text-[#1A1A1A] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1 hover:bg-black/[0.02] transition cursor-pointer"
                     >
                       <RefreshCw className="h-3.5 w-3.5" />
-                      <span>Regenerate</span>
+                      <span>{t.regenerate}</span>
                     </button>
 
                     <button
@@ -886,7 +869,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                       onClick={handleSubmit}
                       className="h-[46px] rounded-[100px] bg-transparent text-[#6B7280] text-xs font-bold uppercase tracking-wider hover:text-[#1A1A1A] transition cursor-pointer"
                     >
-                      <span>Skip</span>
+                      <span>{t.skip}</span>
                     </button>
                   </div>
                 </div>

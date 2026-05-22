@@ -165,6 +165,32 @@ export default function App() {
     return 'en';
   });
 
+  const [ambientPushes, setAmbientPushes] = useState<boolean>(() => {
+    return localStorage.getItem('matcha_ambient_pushes') === 'true';
+  });
+
+  const [ghostMode, setGhostMode] = useState<boolean>(() => {
+    return localStorage.getItem('matcha_ghost_mode') === 'true';
+  });
+
+  const toggleAmbientPushes = () => {
+    try { WebApp.HapticFeedback.impactOccurred('medium'); } catch(e){}
+    setAmbientPushes(prev => {
+      const next = !prev;
+      localStorage.setItem('matcha_ambient_pushes', String(next));
+      return next;
+    });
+  };
+
+  const toggleGhostMode = () => {
+    try { WebApp.HapticFeedback.impactOccurred('medium'); } catch(e){}
+    setGhostMode(prev => {
+      const next = !prev;
+      localStorage.setItem('matcha_ghost_mode', String(next));
+      return next;
+    });
+  };
+
   const toggleAppLanguage = () => {
     try { WebApp.HapticFeedback.impactOccurred('medium'); } catch(e){}
     setAppLanguage(prev => {
@@ -449,7 +475,7 @@ export default function App() {
       const tgUser = WebApp.initDataUnsafe?.user;
       const tgId = tgUser?.id || 242424;
       const tgUsername = tgUser?.username || "test_user";
-      const tgFirstName = tgUser?.first_name || "Jason";
+      const tgFirstName = tgUser?.first_name || "Alex";
       const tgPhotoUrl = tgUser?.photo_url || "";
 
       const user = await getCurrentUser(tgId);
@@ -686,6 +712,7 @@ export default function App() {
           telegramId={currentUser.telegram_id} 
           telegramUsername={currentUser.username} 
           onComplete={handleOnboardingComplete} 
+          appLanguage={appLanguage}
         />
       ) : (
         <div className="flex-1 flex flex-col justify-between h-full bg-[#F5F5F0] overflow-hidden relative" id="mobile-applet-mount">
@@ -1104,18 +1131,12 @@ export default function App() {
                         </div>
 
                         {[
-                          { id: 'notif', name: t.ambientPushes, icon: Bell },
-                          { id: 'privacy', name: t.ghostMode, icon: Shield },
-                          { id: 'onboard', name: t.restartOnboarding, icon: Sparkles }
+                          { id: 'notif', name: t.ambientPushes, icon: Bell, checked: ambientPushes, action: toggleAmbientPushes },
+                          { id: 'privacy', name: t.ghostMode, icon: Shield, checked: ghostMode, action: toggleGhostMode }
                         ].map((item) => (
                           <div
                             key={item.id}
-                            onClick={() => {
-                              try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){}
-                              if (item.id === 'onboard') {
-                                setHasOnboarded(false);
-                              }
-                            }}
+                            onClick={item.action}
                             className="h-[48px] px-4 flex items-center justify-between hover:bg-black/[0.01] cursor-pointer transition duration-150"
                           >
                             <div className="flex items-center gap-3">
@@ -1124,7 +1145,13 @@ export default function App() {
                                 {item.name}
                               </span>
                             </div>
-                            <ChevronRight className="h-4 w-4 text-zinc-300" />
+                            
+                            {/* Gorgeous iOS-style Green Toggle Switch */}
+                            <div className={`w-10 h-6 flex items-center rounded-full p-0.5 transition-colors duration-200 ${item.checked ? 'bg-[#00C896]' : 'bg-zinc-200'}`}>
+                              <div
+                                className={`bg-white w-5 h-5 rounded-full shadow-sm transform duration-200 ease-in-out ${item.checked ? 'translate-x-4' : 'translate-x-0'}`}
+                              />
+                            </div>
                           </div>
                         ))}
                       </div>

@@ -72,8 +72,8 @@ export default function TelegramFrame({
         className="absolute bottom-0 left-1/4 w-[420px] h-[420px] bg-[#C8E6D4]/30 blur-[140px] rounded-full pointer-events-none z-0"
       />
 
-      {/* Main Core Viewport: Centered Smartphone app mockup on PC and full screen on mobile for 100% exact design & feature parity */}
-      <div className="w-full max-w-[460px] min-h-screen md:min-h-0 md:h-[820px] md:max-h-[88vh] bg-[#F5F5F0] relative z-10 flex flex-col shadow-[0_24px_80px_rgba(0,0,0,0.08)] md:border border-black/[0.05] md:rounded-[40px] overflow-hidden transition-all duration-300">
+      {/* Main Core Viewport: Centered Smartphone app mockup on BOTH Mobile and PC for 100% exact design, scroll, and feature parity */}
+      <div className="w-[94%] max-w-[430px] h-[800px] max-h-[94vh] bg-[#F5F5F0] relative z-10 flex flex-col shadow-[0_24px_80px_rgba(26,122,85,0.12)] border border-[#1A7A55]/10 rounded-[38px] overflow-hidden transition-all duration-300">
         
         {/* Workspace Mini Applet Body */}
         <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-[#F5F5F0]">
@@ -85,7 +85,7 @@ export default function TelegramFrame({
               <span className="font-display font-black text-[12.5px] uppercase tracking-wider text-[#1A1A1A]">MATCHA BOT</span>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               {matchaSparks !== undefined && (
                 <motion.div 
                   whileHover={{ scale: 1.05 }}
@@ -100,50 +100,18 @@ export default function TelegramFrame({
                   </span>
                 </motion.div>
               )}
-              <span className="text-[10px] font-mono text-[#00A876] font-extrabold uppercase tracking-widest bg-[#E8F5EE] px-2 py-0.5 rounded-md">TMA INSTANT</span>
+              
+              <div className="flex items-center gap-1 font-mono text-[10.5px] font-black uppercase text-orange-600 select-none bg-orange-500/5 px-2 py-1 rounded-full border border-orange-500/5">
+                <Flame className="w-3.5 h-3.5 fill-orange-500/10" />
+                <span>{streakDays}D</span>
+              </div>
+              
+              <span className="text-[10px] font-mono text-[#00A876] font-extrabold uppercase tracking-widest bg-[#E8F5EE] px-2 py-0.5 rounded-md hidden sm:inline-block">TMA INSTANT</span>
             </div>
           </header>
 
-          {/* Unified layout sub-bar with Invite Friend and Language Switcher, visible everywhere to bridge PC and mobile feature split */}
-          <div className="bg-[#FFFFFF] border-b border-black/[0.03] py-2 px-5 flex items-center justify-between gap-1.5 shrink-0 select-none z-30">
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-              {onInviteAndRefer && (
-                <button
-                  onClick={() => {
-                    try { WebApp.HapticFeedback.impactOccurred('medium'); } catch(e){}
-                    onInviteAndRefer();
-                  }}
-                  className="h-7 px-3.5 rounded-full bg-[#00C896]/10 hover:bg-[#00C896]/20 border border-[#00C896]/15 text-[#1A7A55] font-black text-[9.5px] uppercase tracking-wider transition duration-150 cursor-pointer shrink-0 flex items-center gap-1 shadow-2xs active:scale-95"
-                >
-                  <span>🔗 {appLanguage === 'ru' ? "Позвать друга (+10⚡)" : "Invite Friend (+10⚡)"}</span>
-                </button>
-              )}
-              {onLanguageToggle && (
-                <button
-                  onClick={() => {
-                    try { WebApp.HapticFeedback.impactOccurred('medium'); } catch(e){}
-                    onLanguageToggle();
-                  }}
-                  className="h-7 px-2.5 rounded-full bg-black/[0.03] hover:bg-black/[0.06] border border-black/[0.04] text-[#1A1A1A] text-[9px] font-black uppercase tracking-wider flex items-center gap-1 cursor-pointer shrink-0 active:scale-95"
-                >
-                  <Globe className="w-3 h-3 text-[#00C896]" />
-                  <span>{appLanguage === 'en' ? "US/RU 🇺🇸" : "RU/US 🇷🇺"}</span>
-                </button>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-2 text-neutral-400 font-mono text-[9px] font-black uppercase shrink-0">
-              <span className="flex items-center gap-0.5 text-orange-600">
-                <Flame className="w-3 h-3 fill-orange-500/10" />
-                <span>{streakDays}D</span>
-              </span>
-              <span className="text-neutral-300">|</span>
-              <span className="text-[#00C896] animate-pulse">● LIVE</span>
-            </div>
-          </div>
-
           {/* Core content stream */}
-          <div className="flex-grow flex flex-col overflow-y-auto overflow-x-hidden relative scrollbar-thin">
+          <div className="flex-grow flex flex-col overflow-hidden relative">
             {children}
           </div>
         </div>
