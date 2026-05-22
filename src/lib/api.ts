@@ -11,6 +11,9 @@ export interface SupabaseUser {
   ref_code?: string;
   referred_by?: string;
   created_at?: string;
+  age?: number;
+  bio?: string;
+  photo_url?: string;
 }
 
 // 1. Get current user by telegram_id
@@ -38,9 +41,12 @@ export const onboardUser = async (userData: {
   telegram_id: number;
   username: string;
   name: string;
+  age: number;
   role: string;
   tags: string[];
   ai_facts: string[];
+  bio?: string;
+  photo_url?: string;
 }): Promise<SupabaseUser | null> => {
   const refCode = `REF_${userData.telegram_id}`;
   try {
@@ -61,67 +67,82 @@ export const onboardUser = async (userData: {
   }
 };
 
-// Seed mock profiles if the database does not have enough users (to make the app immediately testable)
+// Seed mock profiles if the database does not have enough users
 const SEED_PROFILES = [
   {
     telegram_id: 9991,
-    username: "elena_codes",
+    username: "elena_tma",
     name: "Elena",
-    role: "Builder / Developer",
-    tags: ["Late Night Coding", "AI & Automation", "Coffee"],
+    age: 21,
+    role: "Visual Creator",
+    tags: ["Photography", "Weird Humor", "Coffee", "Techno & Clubbing"],
     ai_facts: [
-      "probably has 12 unfinished side projects",
-      "sends voice messages at 2AM about bugs",
-      "survives exclusively on coffee and sheer willpower"
-    ]
+      "has a folder of 4,000 cat memes",
+      "convinced that lavender tea cures low battery",
+      "physically cannot sleep without a podcast on"
+    ],
+    bio: "Exploring aesthetics, underground music, and drinking too much matchalatte.",
+    photo_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop"
   },
   {
     telegram_id: 9992,
-    username: "sarah_design",
-    name: "Sarah",
-    role: "Creator / Designer",
-    tags: ["Design", "Content Creation", "Deep Talks"],
+    username: "maksim_sound",
+    name: "Maksim",
+    age: 24,
+    role: "Street DJ",
+    tags: ["Late Night Walks", "Street Food", "Gaming", "Weird Humor"],
     ai_facts: [
-      "aggressively redesigns every application they use",
-      "has a folder with 100 unused vector illustrations",
-      "thinks Comic Sans is a crime against humanity"
-    ]
+      "believes shawarma is a sacred food group",
+      "buys expensive vinyl records instead of groceries",
+      "never replies to texts in under 12 hours"
+    ],
+    bio: "Chasing sunsets, beatdrops, and the perfect late night vibe. Tap for DJ mixes.",
+    photo_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=300&auto=format&fit=crop"
   },
   {
     telegram_id: 9993,
-    username: "memelord_99",
-    name: "Meme Lord",
-    role: "Just exploring",
-    tags: ["Shitposting", "Gaming", "Crypto"],
+    username: "sofia_vibe",
+    name: "Sofia",
+    age: 22,
+    role: "Digital Nomad",
+    tags: ["House Music", "Deep Talks", "Spontaneous Trips", "Yoga & Zen"],
     ai_facts: [
-      "terminally online and extremely proud of it",
-      "replies exclusively in highly specific meme templates",
-      "thinks in systems, talks in shitposts"
-    ]
+      "books flights randomly when feeling slightly bored",
+      "knows exactly 4 card tricks but does them constantly",
+      "thinks email signatures are incredibly passive-aggressive"
+    ],
+    bio: "Living out of a backpack and looking for creative spirits to explore with.",
+    photo_url: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=300&auto=format&fit=crop"
   },
   {
     telegram_id: 9994,
-    username: "alex_hacks",
-    name: "Alex",
-    role: "Founder / Entrepreneur",
-    tags: ["Startups", "Indie Hacking", "AI & Automation"],
+    username: "kirill_hype",
+    name: "Kirill",
+    age: 25,
+    role: "Meme Curator",
+    tags: ["Crypto", "Shitposting", "Late Night Walks", "Tech & Gadgets"],
     ai_facts: [
-      "pitches a new SaaS idea during lunch",
-      "built a browser extension to avoid talking to people",
-      "launches on Product Hunt every other Tuesday"
-    ]
+      "terminally online and speaks mostly in sarcasm",
+      "lost 80% on dogcoins and bought back in anyway",
+      "has custom stickers for every friend group situation"
+    ],
+    bio: "Shitposting because therapy is too expensive. Hit me up for bad advice.",
+    photo_url: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=300&auto=format&fit=crop"
   },
   {
     telegram_id: 9995,
-    username: "dmitry_crypto",
-    name: "Dmitry",
-    role: "Builder / Developer",
-    tags: ["Crypto", "Late Night Coding", "Deep Talks"],
+    username: "tanya_chill",
+    name: "Tanya",
+    age: 23,
+    role: "Specialist",
+    tags: ["Aesthetics & Art", "Weird Humor", "Deep Talks", "Movie Marathons"],
     ai_facts: [
-      "runs a node on a raspberry pi in their closet",
-      "has lost and found private keys five separate times",
-      "speaks fluent solidity but struggles with human language"
-    ]
+      "has watched Interstellar over fifteen times",
+      "creates oddly specific Spotify playlists for dog walking",
+      "is deeply afraid of voice messages longer than 30s"
+    ],
+    bio: "Let's grab a matcha and discuss if aliens actually like our pop music.",
+    photo_url: "https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=300&auto=format&fit=crop"
   }
 ];
 
@@ -281,9 +302,9 @@ export const generateAiFacts = async (
   tags: string[]
 ): Promise<string[]> => {
   const fallback = [
-    "probably has 12 unfinished side projects",
-    "sends voice messages at 2AM about ideas",
-    "thinks in systems, talks in memes"
+    "regularly stays up until 3AM exploring things",
+    "can drink matcha or coffee at any time of day",
+    "prefers texting with memes over actual language"
   ];
 
   const apiKey = (import.meta as any).env.VITE_GROQ_API_KEY;
@@ -306,9 +327,9 @@ export const generateAiFacts = async (
           messages: [{
             role: 'user',
             content: `User is a ${role}, interested in: ${tags.join(', ')}.
-Generate exactly 3 short punchy facts in internet culture tone. 
+Generate exactly 3 short punchy relatable lifestyle facts in friendly internet culture tone (do not focus too much on developers, keep it universally fun for youth/founders).
 Each fact max 8 words. Return ONLY a JSON array of 3 strings.
-Example: ["probably has 12 unfinished side projects", "sends voice messages at 2AM", "thinks in systems, talks in memes"]`
+Example: ["can drink matcha at 2AM", "usually walks around listening to synthwave", "has custom stickers for every friend group"]`
           }],
           temperature: 0.9,
           response_format: { type: "json_object" }
@@ -319,9 +340,7 @@ Example: ["probably has 12 unfinished side projects", "sends voice messages at 2
     const data = await response.json();
     const text = data?.choices?.[0]?.message?.content?.trim();
     if (text) {
-      // Find JSON block if any or parse directly
       const resultObj = JSON.parse(text);
-      // Groq with json_object might wrap list inside a key
       if (Array.isArray(resultObj)) {
         return resultObj.slice(0, 3);
       } else if (resultObj && typeof resultObj === 'object') {
@@ -335,6 +354,136 @@ Example: ["probably has 12 unfinished side projects", "sends voice messages at 2
   } catch (err) {
     console.error("Failed to generate AI facts via Groq:", err);
     return fallback;
+  }
+};
+
+// 5b. Generate AI facts from user chat input
+export const generateFactsFromChat = async (
+  userDescription: string
+): Promise<string[]> => {
+  const fallback = [
+    "prefers casual talks over long voice messages",
+    "knows exactly when a meme format dies",
+    "always ready for spontaneous matchas"
+  ];
+
+  const apiKey = (import.meta as any).env.VITE_GROQ_API_KEY;
+  if (!apiKey) {
+    console.warn("VITE_GROQ_API_KEY is not defined.");
+    return fallback;
+  }
+
+  try {
+    const response = await fetch(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'llama3-8b-8192',
+          messages: [{
+            role: 'user',
+            content: `The user describes themselves conversational: "${userDescription}".
+Generate exactly 3 short, punchy facts in a fun, internet culture, modern tone based on this description. 
+Each fact max 8 words. Return ONLY a JSON array of 3 strings.
+Example: ["thinks tea is warm leaf juice", "has watched Interstellar over fifteen times", "always says 'good vibes' ironicaly"]`
+          }],
+          temperature: 0.85,
+          response_format: { type: "json_object" }
+        })
+      }
+    );
+
+    const data = await response.json();
+    const text = data?.choices?.[0]?.message?.content?.trim();
+    if (text) {
+      const resultObj = JSON.parse(text);
+      if (Array.isArray(resultObj)) {
+        return resultObj.slice(0, 3);
+      } else if (resultObj && typeof resultObj === 'object') {
+        const firstKeyVal = Object.values(resultObj)[0];
+        if (Array.isArray(firstKeyVal)) {
+          return firstKeyVal.slice(0, 3);
+        }
+      }
+    }
+    return fallback;
+  } catch (err) {
+    console.error("Failed to generate facts via conversational chat:", err);
+    return fallback;
+  }
+};
+
+export interface ExtractedOnboardingData {
+  name: string;
+  age: number;
+  role: string;
+  tags: string[];
+  ai_facts: string[];
+}
+
+// 5c. Extractor for conversational onboarding
+export const parseOnboardingFromChat = async (
+  userDescription: string
+): Promise<ExtractedOnboardingData | null> => {
+  const apiKey = (import.meta as any).env.VITE_GROQ_API_KEY;
+  if (!apiKey) {
+    console.warn("VITE_GROQ_API_KEY is not defined.");
+    return null;
+  }
+
+  try {
+    const response = await fetch(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'llama3-8b-8192',
+          messages: [
+            {
+              role: 'system',
+              content: `You are an expert profile extractor. You extract student/freelancer status, hobbies, age, name, and compile 3 lifestyle facts.`
+            },
+            {
+              role: 'user',
+              content: `The user wrote a casual description about themselves: "${userDescription}".
+Extract their name (default to "Jason" if not clear), age (default to 22 if not clear, must be a number), a single short role or status (e.g. Student, Working, Indie Hacker, Creator, default to "Explorer" if not clear, max 3 words), exactly 4 relevant tags based on their text (short single words, lowercase, e.g. ["matcha", "coding", "techno", "gaming"]), and exactly 3 punchy lifestyle facts in friendly youth internet culture tone.
+Return strictly a JSON object with keys: "name", "age", "role", "tags", "ai_facts". Do not include other keys or markdown format.`
+            }
+          ],
+          temperature: 0.75,
+          response_format: { type: "json_object" }
+        })
+      }
+    );
+
+    const data = await response.json();
+    const text = data?.choices?.[0]?.message?.content?.trim();
+    if (text) {
+      const parsed = JSON.parse(text);
+      return {
+        name: parsed.name || "Jason",
+        age: parseInt(parsed.age) || 22,
+        role: parsed.role || "Explorer",
+        tags: Array.isArray(parsed.tags) ? parsed.tags : ["Matcha", "Tech", "Exploring"],
+        ai_facts: Array.isArray(parsed.ai_facts) ? parsed.ai_facts.slice(0, 3) : [
+          "likes custom matchas late",
+          "thinks late talks are therapeutic",
+          "always ready to build side projects"
+        ]
+      };
+    }
+    return null;
+  } catch (err) {
+    console.error("Error in parseOnboardingFromChat:", err);
+    return null;
   }
 };
 
@@ -392,4 +541,55 @@ export const resetUserSwipes = async (currentUserId: string): Promise<void> => {
   } catch (err) {
     console.error("Error resetting swipes in Supabase:", err);
   }
+};
+
+// 8. Compress and Resize Image Utility (Canvas based resize with 0.7 JPEG compression)
+export const compressAndResizeImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 250;
+        const MAX_HEIGHT = 250;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(event.target?.result as string);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        // Compress to high quality JPEG with 0.70 compression which is extremely tiny (<10KB) !
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.70);
+        resolve(compressedBase64);
+      };
+      img.onerror = (err) => {
+        reject(err);
+      };
+    };
+    reader.onerror = (err) => {
+      reject(err);
+    };
+  });
 };

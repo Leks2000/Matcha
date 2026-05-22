@@ -188,148 +188,190 @@ export default function DashboardView({
         className="flex-grow w-full max-w-[390px] relative flex items-center justify-center pt-2 select-none overflow-hidden pb-4"
         id="drag-constraints-wrapper"
       >
-        <AnimatePresence>
+        <AnimatePresence mode="popLayout">
           {currentIndex < profiles.length ? (
-            profiles.map((profile, index) => {
-              if (index < currentIndex || index > currentIndex + 1) return null;
-              const isMain = index === currentIndex;
+            (() => {
+              const activeProfile = profiles[currentIndex];
+              const nextProfile = profiles[currentIndex + 1];
 
               return (
-                <motion.div
-                  key={profile.id}
-                  style={isMain ? { x: dragX, rotate: rotateValue, opacity: opacityValue, scale: scaleValue, touchAction: 'none' } : { touchAction: 'none' }}
-                  drag={isMain ? "x" : false}
-                  dragConstraints={cardWrapperRef}
-                  dragElastic={0.08}
-                  onDragEnd={(e, info) => {
-                    // if velocity.x > 400 or offset.x > 120 -> right swipe!
-                    if (info.velocity.x > 400 || info.offset.x > 120) {
-                      executeSwipeWithHaptics('right');
-                    } else if (info.velocity.x < -400 || info.offset.x < -120) {
-                      executeSwipeWithHaptics('left');
-                    }
-                  }}
-                  className={`absolute w-full h-[500px] sm:h-[520px] max-w-[360px] rounded-[32px] bg-gradient-to-br from-[#C8E6D4] to-[#A8D5B8] border border-black/[0.04] shadow-[0_12px_44px_rgba(0,0,0,0.08)] flex flex-col justify-between overflow-hidden cursor-grab active:cursor-grabbing ${
-                    isMain ? 'z-30' : 'z-20 scale-95 translate-y-3 opacity-60 pointer-events-none'
-                  }`}
-                  initial={isMain ? { y: 25, opacity: 0 } : {}}
-                  animate={isMain ? { y: 0, opacity: 1, transition: { type: "spring", stiffness: 280, damping: 24 } } : {}}
-                  exit={{
-                    x: dragX.get() > 0 ? 380 : -380,
-                    opacity: 0,
-                    rotate: dragX.get() > 0 ? 12 : -12,
-                    scale: 0.9,
-                    transition: { duration: 0.25, ease: "easeOut" }
-                  }}
-                  id={`swipe-card-${profile.id}`}
-                >
-                  {/* Strict spec block: pointer-events: none on all nested card elements except top buttons if any */}
-                  <div className="w-full h-full flex flex-col justify-between pointer-events-none select-none">
-                    
-                    {/* AVATAR & GRADIENT SECTION */}
-                    <div className="relative h-[38%] flex flex-col justify-end items-center pb-2">
-                      <div className="relative">
-                        <div className="absolute inset-0 rounded-full bg-white/40 blur-md animate-pulse" />
-                        <div className="relative w-24 h-24 rounded-full bg-white border-2 border-white flex items-center justify-center text-4xl font-extrabold text-[#1A1A1A] tracking-tighter shadow-md">
-                          {profile.name.charAt(0)}
-                          <span className="absolute bottom-1 right-1 w-4.5 h-4.5 rounded-full bg-[#00C896] border-2 border-white animate-pulse" />
+                <div className="relative w-full h-[500px] sm:h-[520px] max-w-[360px] flex items-center justify-center">
+                  
+                  {/* NEXT PROFILE (Background Card - Static, pointer-events-none, z-10) */}
+                  {nextProfile && (
+                    <div
+                      key={nextProfile.id}
+                      className="absolute w-full h-full rounded-[32px] bg-gradient-to-br from-[#E2EFE6] to-[#CBE5D6] border border-black/[0.04] shadow-xs flex flex-col justify-between overflow-hidden scale-95 translate-y-3.5 opacity-60 pointer-events-none z-10"
+                    >
+                      <div className="w-full h-full flex flex-col justify-between pointer-events-none select-none">
+                        <div className="relative h-[38%] flex flex-col justify-end items-center pb-2">
+                          <div className="relative w-24 h-24 rounded-full bg-white border-2 border-white overflow-hidden shadow-sm flex items-center justify-center font-extrabold text-4xl text-[#1A1A1A]">
+                            {nextProfile.photo_url ? (
+                              <img src={nextProfile.photo_url} alt={nextProfile.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                              nextProfile.name.charAt(0)
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="px-5 text-center flex flex-col justify-center pb-1">
+                          <h2 className="text-[26px] font-extrabold tracking-tight text-[#1A1A1A] leading-tight">
+                            <span>{nextProfile.name}</span>
+                            <span className="text-[#1A1A1A]/40 font-medium ml-1.5">/{nextProfile.age || 22}</span>
+                          </h2>
+                          <p className="text-[14px] text-[#1A1A1A]/70 font-bold mt-1">
+                            @{nextProfile.username} • <span className="text-[#1A7A55] font-extrabold">{nextProfile.role}</span>
+                          </p>
+                        </div>
+
+                        <div className="px-3 pb-3 shrink-0">
+                          <div className="bg-white/80 rounded-[24px] p-3.5 flex flex-col h-[235px] justify-between shadow-xs border border-transparent" />
                         </div>
                       </div>
                     </div>
+                  )}
 
-                    {/* IDENTITY SUMMARY */}
-                    <div className="px-5 text-center flex flex-col justify-center pb-1">
-                      <h2 className="text-[26px] font-extrabold tracking-tight text-[#1A1A1A] leading-tight flex items-center justify-center gap-1.5">
-                        <span>{profile.name}</span>
-                        <span className="text-[#1A1A1A]/50 font-medium">/{profile.age}</span>
-                      </h2>
-                      <p className="text-[14px] text-[#1A1A1A]/70 font-bold mt-1">
-                        @{profile.username} • <span className="text-[#1A7A55] font-extrabold">{profile.role}</span>
-                      </p>
-                    </div>
-
-                    {/* WHITE BOTTOM EXPANSION HOOD */}
-                    <div className="px-3 pb-3 shrink-0">
-                      <div className="bg-white rounded-[24px] p-3.5 flex flex-col h-[235px] justify-between shadow-[0_2px_12px_rgba(0,0,0,0.01)] border border-black/[0.01]">
+                  {/* ACTIVE PROFILE (Foreground Card - Draggable, z-20) */}
+                  {activeProfile && (
+                    <motion.div
+                      key={activeProfile.id}
+                      style={{ x: dragX, rotate: rotateValue, opacity: opacityValue, scale: scaleValue, touchAction: 'none' }}
+                      drag="x"
+                      dragConstraints={cardWrapperRef}
+                      dragElastic={0.15}
+                      onDragEnd={(e, info) => {
+                        if (info.velocity.x > 380 || info.offset.x > 110) {
+                          executeSwipeWithHaptics('right');
+                        } else if (info.velocity.x < -380 || info.offset.x < -110) {
+                          executeSwipeWithHaptics('left');
+                        }
+                      }}
+                      className="absolute w-full h-full rounded-[32px] bg-gradient-to-br from-[#C8E6D4] to-[#A8D5B8] border border-black/[0.04] shadow-[0_16px_40px_rgba(26,122,85,0.06)] flex flex-col justify-between overflow-hidden cursor-grab active:cursor-grabbing z-20"
+                      initial={{ scale: 0.95, y: 10, opacity: 0 }}
+                      animate={{ scale: 1, y: 0, opacity: 1, transition: { type: "spring", stiffness: 300, damping: 25 } }}
+                      exit={{
+                        x: dragX.get() > 0 ? 380 : -380,
+                        opacity: 0,
+                        rotate: dragX.get() > 0 ? 12 : -12,
+                        scale: 0.9,
+                        transition: { duration: 0.22, ease: "easeOut" }
+                      }}
+                      id={`swipe-card-${activeProfile.id}`}
+                    >
+                      <div className="w-full h-full flex flex-col justify-between pointer-events-none select-none">
                         
-                        {/* Tags system representing the schema */}
-                        <div>
-                          <div className="flex flex-wrap gap-1 mb-1.5">
-                            {profile.tags.map((tag) => (
-                              <span
-                                key={tag}
-                                className="bg-[#E8F5EE] text-[#1A7A55] font-extrabold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-
-                          {/* Render their 3 AI-generated facts if present */}
-                          {profile.ai_facts && profile.ai_facts.length > 0 && (
-                            <div className="space-y-0.5 mt-1 pb-1 text-left border-y border-black/[0.03] py-1">
-                              {profile.ai_facts.map((fact, fIdx) => (
-                                <div key={fIdx} className="flex items-center gap-1.5 text-[10.5px] font-bold text-[#1A1A1A]/80 leading-tight">
-                                  <span className="text-[#00C896] text-[9px] shrink-0 font-mono">⚡</span>
-                                  <span className="truncate">{fact}</span>
-                                </div>
-                              ))}
+                        {/* AVATAR & GRADIENT SECTION */}
+                        <div className="relative h-[38%] flex flex-col justify-end items-center pb-2">
+                          <div className="relative">
+                            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/[0.02] to-transparent rounded-full shadow-xs pointer-events-none" />
+                            <div className="relative w-24 h-24 rounded-full bg-white border-2 border-white flex items-center justify-center text-4xl font-extrabold text-[#1A1A1A] tracking-tighter shadow-md overflow-hidden shrink-0">
+                              {activeProfile.photo_url ? (
+                                <img src={activeProfile.photo_url} alt={activeProfile.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              ) : (
+                                activeProfile.name.charAt(0)
+                              )}
+                              <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-[#00C896] border-2 border-white animate-pulse" />
                             </div>
-                          )}
+                          </div>
                         </div>
 
-                        {/* Redesigned AI connection phrase exactly below tags */}
-                        <div className="bg-[#F5F5F0] border border-black/[0.01] rounded-2xl p-2.5 text-left">
-                          <div className="flex items-center justify-between mb-0.5">
-                            <span className="text-[8px] font-extrabold text-[#1A7A55] font-mono uppercase tracking-widest">
-                              // AI VIBE REASON
-                            </span>
-                            <span className="text-[8px] text-white font-mono font-bold bg-[#1A1A1A] px-1 py-0.2 rounded shrink-0">
-                              {vibeScore ? `${Math.round(vibeScore * 10)}% VIBE` : "ANALYZING..."}
-                            </span>
-                          </div>
+                        {/* IDENTITY SUMMARY */}
+                        <div className="px-5 text-center flex flex-col justify-center pb-1">
+                          <h2 className="text-[26px] font-extrabold tracking-tight text-[#1A1A1A] leading-tight flex items-center justify-center gap-1.5">
+                            <span>{activeProfile.name}</span>
+                            <span className="text-[#1A1A1A]/50 font-medium">/{activeProfile.age || 22}</span>
+                          </h2>
+                          <p className="text-[14px] text-[#1A1A1A]/70 font-bold mt-1">
+                            @{activeProfile.username || 'user'} • <span className="text-[#1A7A55] font-extrabold">{activeProfile.role}</span>
+                          </p>
+                        </div>
 
-                          {isAnalysisLoading ? (
-                            <div className="space-y-1 py-1">
-                              <div className="h-1.5 bg-black/[0.04] rounded-full w-full animate-pulse" />
-                              <div className="h-1.5 bg-black/[0.04] rounded-full w-4/5 animate-pulse" />
+                        {/* WHITE BOTTOM EXPANSION HOOD */}
+                        <div className="px-3 pb-3 shrink-0">
+                          <div className="bg-white rounded-[24px] p-3.5 flex flex-col h-[235px] justify-between shadow-[0_2px_12px_rgba(0,0,0,0.01)] border border-black/[0.01]">
+                            
+                            {/* Tags system representing the schema */}
+                            <div>
+                              <div className="flex flex-wrap gap-1 mb-1.5">
+                                {(activeProfile.tags || []).slice(0, 4).map((tag: string) => (
+                                  <span
+                                    key={tag}
+                                    className="bg-[#E8F5EE] text-[#1A7A55] font-extrabold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+
+                              {/* Render their 3 AI-generated facts if present */}
+                              {activeProfile.ai_facts && activeProfile.ai_facts.length > 0 && (
+                                <div className="space-y-0.5 mt-1 pb-1 text-left border-y border-black/[0.03] py-1">
+                                  {activeProfile.ai_facts.map((fact: string, fIdx: number) => (
+                                    <div key={fIdx} className="flex items-center gap-1.5 text-[10.5px] font-bold text-[#1A1A1A]/80 leading-tight">
+                                      <span className="text-[#00C896] text-[9px] shrink-0 font-mono">⚡</span>
+                                      <span className="truncate">{fact}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                          ) : (
-                            <p className="text-[11px] leading-snug text-[#1A1A1A] font-extrabold italic tracking-tight">
-                              "{typewriterText || vibeReasonText}"
-                            </p>
-                          )}
+
+                            {/* Redesigned AI connection phrase exactly below tags */}
+                            <div className="bg-[#F5F5F0] border border-black/[0.01] rounded-2xl p-2.5 text-left">
+                              <div className="flex items-center justify-between mb-0.5">
+                                <span className="text-[8px] font-extrabold text-[#1A7A55] font-mono uppercase tracking-widest">
+                                  // AI VIBE REASON
+                                </span>
+                                <span className="text-[8px] text-white font-mono font-bold bg-[#1A1A1A] px-1 py-0.2 rounded shrink-0">
+                                  {vibeScore ? `${Math.round(vibeScore * 10)}% VIBE` : "ANALYZING..."}
+                                </span>
+                              </div>
+
+                              {isAnalysisLoading ? (
+                                <div className="space-y-1 py-1">
+                                  <div className="h-1.5 bg-black/[0.04] rounded-full w-full animate-pulse" />
+                                  <div className="h-1.5 bg-black/[0.04] rounded-full w-4/5 animate-pulse" />
+                                </div>
+                              ) : (
+                                <p className="text-[11px] leading-snug text-[#1A1A1A] font-extrabold italic tracking-tight">
+                                  "{typewriterText || vibeReasonText}"
+                                </p>
+                              )}
+                            </div>
+
+                          </div>
                         </div>
 
                       </div>
-                    </div>
+                    </motion.div>
+                  )}
 
-                  </div>
-                </motion.div>
+                </div>
               );
-            })
+            })()
           ) : (
-            /* Empty walkstage */
-            <div className="absolute w-[350px] h-[500px] rounded-[32px] bg-white border border-black/[0.04] flex flex-col items-center justify-center p-6 text-center space-y-5 shadow-sm">
+            /* Empty walkstage matching the matcha tea styling */
+            <div className="absolute w-[350px] h-[500px] rounded-[32px] bg-white border border-black/[0.05] flex flex-col items-center justify-center p-6 text-center space-y-6 shadow-[0_12px_36px_rgba(0,0,0,0.01)]">
               <div className="relative">
-                <div className="w-16 h-16 rounded-full bg-[#E8F5EE] flex items-center justify-center text-[#1A7A55]">
+                <span className="absolute inset-0 rounded-full bg-[#E8F5EE] blur-xl animate-pulse" />
+                <div className="relative w-16 h-16 rounded-full bg-[#E8F5EE] flex items-center justify-center text-[#1A7A55] shadow-xs">
                   <Sparkles className="h-7 w-7" />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <h4 className="font-extrabold text-[#1A1A1A] text-lg font-display">No More Waves Today</h4>
-                <p className="text-xs text-[#6B7280] max-w-[220px] mx-auto leading-relaxed">
+              <div className="space-y-1.5">
+                <h4 className="font-extrabold text-[#1A1A1A] text-lg font-display tracking-tight">No More Waves Today</h4>
+                <p className="text-xs text-[#6B7280] max-w-[220px] mx-auto leading-relaxed font-semibold">
                   You have toured all active builders matching your vibe frequency.
                 </p>
               </div>
 
               <button
                 onClick={handleResetDeck}
-                className="px-6 py-3.5 bg-[#1A1A1A] text-white rounded-3xl text-[12px] font-bold uppercase tracking-wider hover:opacity-95 active:scale-95 transition cursor-pointer shadow-md"
+                className="px-6 h-[48px] rounded-[100px] border border-black/[0.1] bg-[#1A1A1A] text-white text-xs font-bold uppercase tracking-wider hover:opacity-90 active:scale-95 transition cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
                 id="reset-swipe-deck-btn"
               >
-                Reset Wave Deck
+                <span>Reset Wave Deck</span>
               </button>
             </div>
           )}
@@ -378,7 +420,7 @@ export default function DashboardView({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-[#F0F0EB]/95 backdrop-blur-md flex items-center justify-center p-4 select-none"
+            className="fixed inset-0 z-50 bg-[#F5F5F0]/95 backdrop-blur-md flex items-center justify-center p-4 select-none"
             id="match-vibe-overlay"
           >
             <motion.div

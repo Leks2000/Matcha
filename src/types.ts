@@ -1,14 +1,16 @@
 export interface UserProfile {
   id: string;
-  telegram_id: string;
+  telegram_id: string | number;
   username: string;
   name: string;
   age: number;
   role: string;
   tags: string[];
-  created_at: string;
+  created_at?: string;
   vibeScore?: number;
   ai_facts?: string[];
+  bio?: string;
+  photo_url?: string;
 }
 
 export interface MatchRecord {
@@ -21,18 +23,20 @@ export interface MatchRecord {
 
 export interface CurrentUser {
   id: string;
-  telegram_id: string;
+  telegram_id: string | number;
   username: string;
   name: string;
   age: number;
   role: string;
   tags: string[];
-  created_at: string;
+  created_at?: string;
   streakDays: number;
   matchesToday: number;
   isPremium: boolean;
   priorityPoints?: number; // growth priority boost points
   ai_facts?: string[];
+  bio?: string;
+  photo_url?: string;
 }
 
 export interface SwipeAction {
