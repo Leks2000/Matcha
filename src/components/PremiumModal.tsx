@@ -21,24 +21,15 @@ export default function PremiumModal({ isOpen, onClose, onSuccess }: PremiumModa
 
   const handlePurchase = async () => {
     setLoading(true);
-    try {
-      const response = await fetch('/api/user/premium', { method: 'POST' });
-      const data = await response.json();
-      if (data.success) {
-        setTimeout(() => {
-          setLoading(false);
-          setPurchased(true);
-          setTimeout(() => {
-            onSuccess(data.isPremium);
-            onClose();
-            setPurchased(false);
-          }, 1500);
-        }, 1100);
-      }
-    } catch (err) {
-      console.error(err);
+    setTimeout(() => {
       setLoading(false);
-    }
+      setPurchased(true);
+      setTimeout(() => {
+        onSuccess(true);
+        onClose();
+        setPurchased(false);
+      }, 1500);
+    }, 1100);
   };
 
   if (!isOpen) return null;
