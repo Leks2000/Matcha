@@ -973,7 +973,7 @@ export default function DashboardView({
 
               <button
                 onClick={handleResetDeck}
-                className="px-6 h-[48px] rounded-[100px] bg-[#00C896] hover:bg-[#00B083] text-[#1A1A1A] text-xs font-black uppercase tracking-wider active:scale-95 transition-all duration-300 cursor-pointer shadow-md flex items-center justify-center gap-1.5 hover:scale-[1.02] select-none border-none"
+                className="px-6 h-[48px] rounded-[100px] bg-[#00C896] hover:bg-[#00B083] text-white text-xs font-black uppercase tracking-wider active:scale-95 transition-all duration-300 cursor-pointer shadow-md flex items-center justify-center gap-1.5 hover:scale-[1.02] select-none border-none"
                 id="reset-swipe-deck-btn"
               >
                 <span>Reset Wave Deck</span>
@@ -1078,7 +1078,7 @@ export default function DashboardView({
                       window.open(tgLink, '_blank');
                     }
                   }}
-                  className="w-full h-[48px] rounded-xl bg-[#00C896] hover:opacity-95 text-[#1A1A1A] font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition active:scale-[0.98]"
+                  className="w-full h-[48px] rounded-xl bg-[#00C896] hover:opacity-95 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition active:scale-[0.98]"
                   id="send-telegram-write-btn"
                 >
                   <MessageSquare className="h-4.5 w-4.5 stroke-[2.5]" />

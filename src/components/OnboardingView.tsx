@@ -522,7 +522,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                 <button
                   onClick={() => setStep(2)}
                   disabled={!name.trim() || (!role && !customRoleText.trim())}
-                  className="w-full h-[54px] rounded-[100px] bg-[#00C896] text-[#1A1A1A] font-extrabold uppercase tracking-wider text-xs hover:opacity-95 transition active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                  className="w-full h-[54px] rounded-[100px] bg-[#00C896] text-white font-extrabold uppercase tracking-wider text-xs hover:opacity-95 transition active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                   id="continue-onboard-btn"
                 >
                   <span>Select My Tags</span>
@@ -577,7 +577,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                 <button
                   type="button"
                   onClick={handleAddCustomTag}
-                  className="w-8 h-8 rounded-xl bg-[#00C896] text-[#1A1A1A] flex items-center justify-center active:scale-90 transition cursor-pointer shrink-0"
+                  className="w-8 h-8 rounded-xl bg-[#00C896] text-white flex items-center justify-center active:scale-90 transition cursor-pointer shrink-0"
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -649,7 +649,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                 disabled={selectedTags.length < 2 || selectedTags.length > 7}
                 className={`w-full h-[54px] rounded-[100px] font-extrabold uppercase tracking-wider text-xs flex items-center justify-center gap-2 transition cursor-pointer ${
                   selectedTags.length >= 2 && selectedTags.length <= 7
-                    ? 'bg-[#00C896] text-[#1A1A1A] hover:opacity-95 shadow-sm'
+                    ? 'bg-[#00C896] text-white hover:opacity-95 shadow-sm'
                     : 'bg-black/[0.04] border border-transparent text-[#9E9E9E] cursor-not-allowed'
                 }`}
                 id="generate-deck-btn"
@@ -734,7 +734,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                   <button
                     onClick={handleSubmit}
                     disabled={isLoading}
-                    className="w-full h-[54px] rounded-[100px] bg-[#00C896] text-[#1A1A1A] font-black uppercase tracking-wider text-xs flex items-center justify-center gap-2 shadow-xs hover:opacity-95 transition active:scale-[0.98] cursor-pointer"
+                    className="w-full h-[54px] rounded-[100px] bg-[#00C896] text-white font-black uppercase tracking-wider text-xs flex items-center justify-center gap-2 shadow-xs hover:opacity-95 transition active:scale-[0.98] cursor-pointer"
                     id="confirm-vibe-btn"
                   >
                     <span>Confirm & Continue</span>

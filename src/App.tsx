@@ -305,7 +305,7 @@ export default function App() {
     }
   };
 
-  // Initialize Telegram TMA environment params safely
+  // Initialize Telegram TMA environment params safely and register PC drag scroll
   useEffect(() => {
     try {
       WebApp.ready();
@@ -315,6 +315,133 @@ export default function App() {
     } catch (e) {
       console.log("Telegram TMA SDK bypass on outer desktop browser.");
     }
+
+    // Global desktop/PC mouse drag-to-scroll implementation
+    let isDown = false;
+    let startX = 0;
+    let startY = 0;
+    let scrollLeft = 0;
+    let scrollTop = 0;
+    let dragTarget: HTMLElement | null = null;
+    let totalDist = 0;
+    let hasDraggedActive = false;
+
+    // Helper to find closest scrollable parent
+    const findScrollableParent = (el: HTMLElement | null): HTMLElement | null => {
+      let current = el;
+      while (current && current !== document.body && current !== document.documentElement) {
+        const style = window.getComputedStyle(current);
+        const overflowY = style.overflowY;
+        const overflowX = style.overflowX;
+        const isScrollableY = (overflowY === 'auto' || overflowY === 'scroll') && current.scrollHeight > current.clientHeight;
+        const isScrollableX = (overflowX === 'auto' || overflowX === 'scroll') && current.scrollWidth > current.clientWidth;
+        
+        if (isScrollableY || isScrollableX) {
+          return current;
+        }
+        current = current.parentElement;
+      }
+      
+      // Fallback to the main content container if dragging on root elements
+      const mainScroll = document.getElementById('mobile-applet-mount')?.querySelector('.overflow-y-auto');
+      if (mainScroll) return mainScroll as HTMLElement;
+      return null;
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+      // Only handle left mouse button
+      if (e.button !== 0) return;
+
+      // Ignore input elements, interactive fields, selections, map pins, or items that explicitly bypass dragging scroll 
+      const target = e.target as HTMLElement;
+      if (
+        target.closest('input') ||
+        target.closest('textarea') ||
+        target.closest('button') ||
+        target.closest('a') ||
+        target.closest('[contenteditable="true"]') ||
+        target.closest('.no-drag')
+      ) {
+        return;
+      }
+
+      const scrollable = findScrollableParent(target);
+      if (!scrollable) return;
+
+      isDown = true;
+      dragTarget = scrollable;
+      startX = e.clientX;
+      startY = e.clientY;
+      scrollLeft = scrollable.scrollLeft;
+      scrollTop = scrollable.scrollTop;
+      totalDist = 0;
+      hasDraggedActive = false;
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDown || !dragTarget) return;
+
+      const x = e.clientX;
+      const y = e.clientY;
+      const walkX = x - startX;
+      const walkY = y - startY;
+      
+      const dist = Math.sqrt(walkX * walkX + walkY * walkY);
+      totalDist = Math.max(totalDist, dist);
+
+      if (totalDist > 5) {
+        if (!hasDraggedActive) {
+          hasDraggedActive = true;
+          // Apply cursor grabbing style and suppress selections
+          document.body.style.cursor = 'grabbing';
+          document.body.style.userSelect = 'none';
+        }
+      }
+
+      if (hasDraggedActive) {
+        // Drag scrolling both vertical or horizontal scroll containers seamlessly
+        dragTarget.scrollTop = scrollTop - walkY;
+        dragTarget.scrollLeft = scrollLeft - walkX;
+      }
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (!isDown) return;
+      isDown = false;
+      
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      
+      // Reset variables with a small timeout so mouseup click events can be suppressed accurately
+      setTimeout(() => {
+        dragTarget = null;
+        hasDraggedActive = false;
+      }, 40);
+    };
+
+    // Cleanly suppress child click events if the mouse release follows a dragging action
+    const handleCaptureClick = (e: MouseEvent) => {
+      if (hasDraggedActive && totalDist > 5) {
+        e.preventDefault();
+        e.stopPropagation();
+        hasDraggedActive = false;
+        totalDist = 0;
+      }
+    };
+
+    window.addEventListener('mousedown', handleMouseDown, { passive: false });
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('mouseup', handleMouseUp, { passive: true });
+    window.addEventListener('click', handleCaptureClick, { capture: true });
+
+    return () => {
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('click', handleCaptureClick, { capture: true });
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
   }, []);
 
   const fetchCurrentUserAndConfig = async () => {
@@ -781,7 +908,7 @@ export default function App() {
                     <button
                       onClick={handleSaveProfile}
                       disabled={saveStatus.includes("Saving")}
-                      className="w-full h-[46px] rounded-xl bg-[#00C896] text-[#1A1A1A] font-extrabold text-xs uppercase tracking-wider hover:opacity-90 active:scale-[0.98] transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer mt-2"
+                      className="w-full h-[46px] rounded-xl bg-[#00C896] text-white font-extrabold text-xs uppercase tracking-wider hover:opacity-90 active:scale-[0.98] transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer mt-2"
                     >
                       <Save className="h-4 w-4" />
                       <span>{saveStatus ? (saveStatus === "Profile Saved!" ? (appLanguage === "ru" ? "Профиль Сохранен!" : "Profile Saved!") : saveStatus) : t.saveDetails}</span>
@@ -875,7 +1002,7 @@ export default function App() {
                         disabled={chatLoading || !chatInput.trim()}
                         className={`w-full h-[38px] rounded-xl font-bold uppercase tracking-wider text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer ${
                           chatInput.trim()
-                            ? 'bg-[#00C896] text-[#1A1A1A] hover:opacity-95'
+                            ? 'bg-[#00C896] text-white hover:opacity-95'
                             : 'bg-white/[0.05] text-zinc-500 cursor-not-allowed'
                         }`}
                       >
@@ -1024,7 +1151,7 @@ export default function App() {
                   <div className="pt-2 pb-6">
                     <button
                       onClick={handleResetDemo}
-                      className="w-full text-center py-4 bg-[#00C896] hover:bg-[#00B285] text-[#1A1A1A] rounded-[100px] h-[56px] text-xs font-black uppercase tracking-widest cursor-pointer transition active:scale-[0.98] shadow-sm flex items-center justify-center gap-1"
+                      className="w-full text-center py-4 bg-[#00C896] hover:bg-[#00B285] text-white rounded-[100px] h-[56px] text-xs font-black uppercase tracking-widest cursor-pointer transition active:scale-[0.98] shadow-sm flex items-center justify-center gap-1"
                       id="edit-profile-btn"
                     >
                       <span>{t.resetWaveHistory}</span>
