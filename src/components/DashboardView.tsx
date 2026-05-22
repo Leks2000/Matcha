@@ -358,53 +358,6 @@ export default function DashboardView({
     }
   }, [currentUser?.id]);
 
-  // Reset card mode facts/radar and translation state on card swipe
-  useEffect(() => {
-    setCardMode('facts');
-    setTranslatedProfile(null);
-    setIsTranslating(false);
-  }, [currentIndex]);
-
-  // Handle manual translation actions (X/Twitter style)
-  const handleToggleTranslation = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!activeProfile) return;
-
-    try { WebApp.HapticFeedback.impactOccurred('light'); } catch(err){}
-
-    if (translatedProfile) {
-      setTranslatedProfile(null);
-      return;
-    }
-
-    setIsTranslating(true);
-    try {
-      const targetLang = appLanguage;
-      const trans = await translateProfile(
-        {
-          username: activeProfile.username,
-          role: activeProfile.role,
-          bio: activeProfile.bio,
-          tags: activeProfile.tags,
-          ai_facts: activeProfile.ai_facts
-        },
-        targetLang
-      );
-      setTranslatedProfile({
-        id: activeProfile.id,
-        role: trans.role,
-        bio: trans.bio,
-        tags: trans.tags,
-        ai_facts: trans.ai_facts,
-        lang: targetLang
-      });
-    } catch (err) {
-      console.error("Translation operation failed:", err);
-    } finally {
-      setIsTranslating(false);
-    }
-  };
-
   // Handle server-seed selection or offline match filters based on the selected role capsule 
   const getFilteredProfiles = () => {
     if (selectedRoleFilter === 'All') return profiles;
@@ -428,6 +381,54 @@ export default function DashboardView({
 
   const filteredProfiles = getFilteredProfiles();
   const activeProfile = filteredProfiles[currentIndex];
+
+  // Automatically translate active profile if language matches requirements
+  useEffect(() => {
+    setCardMode('facts');
+    setTranslatedProfile(null);
+    setIsTranslating(false);
+
+    if (!activeProfile) return;
+
+    let active = true;
+    const autoTranslate = async () => {
+      setIsTranslating(true);
+      try {
+        const trans = await translateProfile(
+          {
+            username: activeProfile.username,
+            role: activeProfile.role,
+            bio: activeProfile.bio,
+            tags: activeProfile.tags,
+            ai_facts: activeProfile.ai_facts
+          },
+          appLanguage
+        );
+        if (active) {
+          setTranslatedProfile({
+            id: activeProfile.id || activeProfile.telegram_id?.toString(),
+            role: trans.role,
+            bio: trans.bio,
+            tags: trans.tags,
+            ai_facts: trans.ai_facts,
+            lang: appLanguage
+          });
+        }
+      } catch (err) {
+        console.error("Auto translation failed:", err);
+      } finally {
+        if (active) {
+          setIsTranslating(false);
+        }
+      }
+    };
+
+    autoTranslate();
+
+    return () => {
+      active = false;
+    };
+  }, [currentIndex, activeProfile, appLanguage]);
 
   // Request the AI Single Sentence humorous connection info (cached per target on client/server)
   useEffect(() => {
@@ -822,25 +823,15 @@ export default function DashboardView({
                           <p className="text-[14px] text-[#1A1A1A]/70 font-bold mt-1">
                             @{activeProfile.username || 'user'} • <span className="text-[#1A7A55] font-extrabold">{translatedProfile ? translatedProfile.role : activeProfile.role}</span>
                           </p>
-                          {/* Live Translate Button like on X (Twitter) platform */}
-                          <div className="flex justify-center mt-1 pointer-events-auto">
-                            <button
-                              type="button"
-                              onClick={handleToggleTranslation}
-                              className="text-[9.5px] font-black uppercase tracking-wider text-[#1A7A55] hover:text-[#00C896] bg-white/50 hover:bg-white/75 px-3 py-1 rounded-[100px] border border-black/[0.04] transition active:scale-95 duration-100 flex items-center gap-1.5 cursor-pointer shadow-xs select-none"
-                            >
-                              {isTranslating ? (
-                                <span className="flex items-center gap-1">
-                                  <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1A7A55] border-t-transparent animate-spin inline-block" />
-                                  <span>{appLanguage === 'ru' ? 'Переводим...' : 'Translating...'}</span>
-                                </span>
-                              ) : translatedProfile ? (
-                                <span>🌐 {appLanguage === 'ru' ? 'Показать оригинал' : 'Show original'}</span>
-                              ) : (
-                                <span>🌐 {appLanguage === 'ru' ? 'Перевести био' : 'Translate bio'}</span>
-                              )}
-                            </button>
-                          </div>
+                          {/* Streamlined Live Translation Indicator */}
+                          {isTranslating && (
+                            <div className="flex justify-center mt-1">
+                              <span className="text-[9.5px] font-black uppercase tracking-wider text-[#1A7A55]/60 flex items-center gap-1">
+                                <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1A7A55]/40 border-t-transparent animate-spin inline-block" />
+                                <span>{appLanguage === 'ru' ? 'Переводим...' : 'Translating...'}</span>
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         {/* WHITE BOTTOM EXPANSION HOOD */}
@@ -959,8 +950,7 @@ export default function DashboardView({
             /* Empty walkstage matching the matcha tea styling */
             <div className="absolute w-[350px] h-[500px] rounded-[32px] bg-white border border-black/[0.05] flex flex-col items-center justify-center p-6 text-center space-y-6 shadow-[0_12px_36px_rgba(0,0,0,0.01)]">
               <div className="relative">
-                <span className="absolute inset-0 rounded-full bg-[#E8F5EE] blur-xl animate-pulse" />
-                <div className="relative w-16 h-16 rounded-full bg-[#E8F5EE] flex items-center justify-center text-[#1A7A55] shadow-xs">
+                <div className="relative w-16 h-16 rounded-full flex items-center justify-center text-[#00C896]">
                   <Sparkles className="h-7 w-7" />
                 </div>
               </div>
@@ -1222,7 +1212,7 @@ export default function DashboardView({
               </button>
 
               <div className="relative">
-                <div className="relative w-12 h-12 rounded-full bg-[#00C896]/10 flex items-center justify-center text-[#00C896] mx-auto">
+                <div className="relative w-12 h-12 rounded-full flex items-center justify-center text-[#00C896] mx-auto">
                   <Sparkles className="h-6 w-6 stroke-[2]" />
                 </div>
               </div>

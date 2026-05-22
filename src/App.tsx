@@ -682,7 +682,7 @@ export default function App() {
         <div className="flex-1 flex flex-col justify-between h-full bg-[#F5F5F0] overflow-hidden relative" id="mobile-applet-mount">
           
           {/* Main Content Pane */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col h-full scrollbar-thin">
+          <div className={`flex-1 px-4 py-4 flex flex-col scrollbar-thin ${mobileTab === 'discover' ? 'overflow-hidden' : 'overflow-y-auto pb-12'}`}>
             <AnimatePresence mode="wait">
               
               {/* SWIPE MAIN SCREEN */}

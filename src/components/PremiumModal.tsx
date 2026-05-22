@@ -65,7 +65,7 @@ export default function PremiumModal({ isOpen, onClose, onSuccess }: PremiumModa
             <div className="space-y-5">
               {/* Premium Logo Header */}
               <div className="text-center space-y-1.5 pt-2">
-                <div className="mx-auto w-10 h-10 rounded-xl bg-[#E8F5EE] flex items-center justify-center text-[#1A7A55]">
+                <div className="mx-auto w-10 h-10 rounded-xl flex items-center justify-center text-[#1A7A55]">
                   <Crown className="h-5 w-5 fill-current" />
                 </div>
                 <h3 className="text-xl font-bold tracking-tight text-[#1A1A1A]">Upgrade with Pro Stars</h3>
@@ -147,7 +147,7 @@ export default function PremiumModal({ isOpen, onClose, onSuccess }: PremiumModa
               animate={{ opacity: 1, scale: 1 }}
               className="text-center py-8 space-y-4"
             >
-              <div className="w-14 h-14 rounded-full bg-[#E8F5EE] text-[#1A7A55] flex items-center justify-center mx-auto shadow-sm">
+              <div className="w-14 h-14 rounded-full text-[#1A7A55] flex items-center justify-center mx-auto">
                 <Star className="h-7 w-7 fill-current" />
               </div>
               <div className="space-y-1">
