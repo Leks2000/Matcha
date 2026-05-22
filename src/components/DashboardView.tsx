@@ -3,19 +3,21 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/re
 import { Sparkles, Heart, X, MessageSquare } from 'lucide-react';
 import { UserProfile, CurrentUser } from '../types';
 import WebApp from '@twa-dev/sdk';
-import { getProfiles, recordSwipe, getVibeReason, resetUserSwipes, triggerTelegramBotNotification } from '../lib/api';
+import { getProfiles, recordSwipe, getVibeReason, resetUserSwipes, triggerTelegramBotNotification, translateProfile } from '../lib/api';
 import VibeRadar from './VibeRadar';
 
 interface DashboardViewProps {
   currentUser: CurrentUser;
   onOpenPremium: () => void;
   onUpdateCurrentUser: (user: CurrentUser) => void;
+  appLanguage: 'en' | 'ru';
 }
 
 export default function DashboardView({
   currentUser,
   onOpenPremium,
-  onUpdateCurrentUser
+  onUpdateCurrentUser,
+  appLanguage
 }: DashboardViewProps) {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -34,7 +36,46 @@ export default function DashboardView({
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('All');
   const [cardMode, setCardMode] = useState<'facts' | 'radar'>('facts');
 
+  // Integrated X-style profile translation state
+  const [translatedProfile, setTranslatedProfile] = useState<{
+    id: string;
+    role: string;
+    bio: string;
+    tags: string[];
+    ai_facts: string[];
+    lang: 'en' | 'ru';
+  } | null>(null);
+  const [isTranslating, setIsTranslating] = useState(false);
+
   const cardWrapperRef = useRef<HTMLDivElement>(null);
+
+  // Mouse drag scrolling state for PC / Desktop ease of use
+  const filterScrollRef = useRef<HTMLDivElement>(null);
+  const [isDragScrollingHeader, setIsDragScrollingHeader] = useState(false);
+  const [dragScrollStartX, setDragScrollStartX] = useState(0);
+  const [dragScrollLeft, setDragScrollLeft] = useState(0);
+
+  const startHeaderDragScroll = (e: React.MouseEvent) => {
+    const el = filterScrollRef.current;
+    if (!el) return;
+    setIsDragScrollingHeader(true);
+    setDragScrollStartX(e.pageX - el.offsetLeft);
+    setDragScrollLeft(el.scrollLeft);
+  };
+
+  const stopHeaderDragScroll = () => {
+    setIsDragScrollingHeader(false);
+  };
+
+  const executeHeaderDragScroll = (e: React.MouseEvent) => {
+    if (!isDragScrollingHeader) return;
+    e.preventDefault();
+    const el = filterScrollRef.current;
+    if (!el) return;
+    const x = e.pageX - el.offsetLeft;
+    const walk = (x - dragScrollStartX) * 1.5; // Drag speed multi
+    el.scrollLeft = dragScrollLeft - walk;
+  };
 
   // Framer Motion gesture physics
   const dragX = useMotionValue(0);
@@ -42,6 +83,145 @@ export default function DashboardView({
   const opacityValue = useTransform(dragX, [-200, -100, 0, 100, 200], [0.5, 1, 1, 1, 0.5]);
   const dragXAbs = useTransform(dragX, x => Math.abs(x));
   const scaleValue = useTransform(dragXAbs, [0, 200], [1, 1.05]);
+
+  // Track currently playing audio profile ID
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+
+  // Daily Cosmic Quest state model
+  const [activeQuest, setActiveQuest] = useState<{
+    id: string;
+    title: string;
+    description: string;
+    targetCount: number;
+    currentCount: number;
+    completed: boolean;
+    rewardClaimed: boolean;
+  } | null>(null);
+
+  // Initialize and load daily quest
+  useEffect(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const savedQuestStr = localStorage.getItem('matcha_daily_quest');
+
+    if (savedQuestStr) {
+      try {
+        const saved = JSON.parse(savedQuestStr);
+        if (saved.date === todayStr) {
+          setActiveQuest(saved.quest);
+          return;
+        }
+      } catch (e) {
+        console.error("Error parsing saved daily quest", e);
+      }
+    }
+
+    const QUESTS_POOL = [
+      { id: 'radar', title: 'Radar Explorer 🌀', description: 'Switch to Radar view on top of any card to compare tag vectors', targetCount: 1 },
+      { id: 'vibe_voice', title: 'Sonic Resonator 🎙️', description: 'Listen to any match candidate’s recorded voice bio', targetCount: 1 },
+      { id: 'swipe_wave', title: 'Cosmic Swiper 🌊', description: 'Evaluate and react to at least 3 profiles in the finder deck', targetCount: 3 },
+      { id: 'filter_role', title: 'Role Dispatcher 👥', description: 'Toggle through 2 different filter categories in the finder tab', targetCount: 2 }
+    ];
+
+    const day = new Date().getDate();
+    const picked = QUESTS_POOL[day % QUESTS_POOL.length];
+
+    const initialQuest = {
+      id: picked.id,
+      title: picked.title,
+      description: picked.description,
+      targetCount: picked.targetCount,
+      currentCount: 0,
+      completed: false,
+      rewardClaimed: false
+    };
+
+    localStorage.setItem('matcha_daily_quest', JSON.stringify({
+      date: todayStr,
+      quest: initialQuest
+    }));
+    setActiveQuest(initialQuest);
+  }, []);
+
+  // Update Quest Progress helper
+  const updateQuestProgress = (actionId: string, increment = 1) => {
+    setActiveQuest((prev) => {
+      if (!prev || prev.completed || prev.rewardClaimed) return prev;
+      if (prev.id !== actionId) return prev;
+
+      const newCount = Math.min(prev.currentCount + increment, prev.targetCount);
+      const isCompleted = newCount >= prev.targetCount;
+
+      const updated = {
+        ...prev,
+        currentCount: newCount,
+        completed: isCompleted
+      };
+
+      if (isCompleted) {
+        try { WebApp.HapticFeedback.notificationOccurred('success'); } catch (e) {}
+      }
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      localStorage.setItem('matcha_daily_quest', JSON.stringify({
+        date: todayStr,
+        quest: updated
+      }));
+
+      return updated;
+    });
+  };
+
+  // Claim Quest Reward
+  const claimQuestReward = () => {
+    if (!activeQuest || !activeQuest.completed || activeQuest.rewardClaimed) return;
+
+    const updated = {
+      ...activeQuest,
+      rewardClaimed: true
+    };
+
+    setActiveQuest(updated);
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    localStorage.setItem('matcha_daily_quest', JSON.stringify({
+      date: todayStr,
+      quest: updated
+    }));
+
+    // Award +5 Sparks to current user
+    const currentSparks = currentUser.matcha_sparks ?? 0;
+    onUpdateCurrentUser({
+      ...currentUser,
+      matcha_sparks: currentSparks + 5
+    });
+
+    try {
+      WebApp.HapticFeedback.notificationOccurred('success');
+    } catch (e) {}
+  };
+
+  // Cleanup speak on card index change
+  useEffect(() => {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    if ((window as any).currentPlayingAudio) {
+      (window as any).currentPlayingAudio.pause();
+    }
+    setPlayingAudioId(null);
+  }, [currentIndex]);
+
+  // Cleanup voice on unmount
+  useEffect(() => {
+    return () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      if ((window as any).currentPlayingAudio) {
+        (window as any).currentPlayingAudio.pause();
+      }
+    };
+  }, []);
 
   // Candidate Play voice handler (base64 or dynamic high-fidelity Web Speech Synthesis representation)
   const handlePlayCandidateVoice = (profile: any, e: React.MouseEvent) => {
@@ -55,8 +235,16 @@ export default function DashboardView({
       (window as any).currentPlayingAudio.pause();
     }
 
+    setPlayingAudioId(profile.id);
+
     if (profile.voice_bio) {
       const audio = new Audio(profile.voice_bio);
+      audio.onended = () => {
+        setPlayingAudioId(null);
+      };
+      audio.onerror = () => {
+        setPlayingAudioId(null);
+      };
       audio.play();
       (window as any).currentPlayingAudio = audio;
     } else {
@@ -77,6 +265,12 @@ export default function DashboardView({
         }
 
         const utterance = new SpeechSynthesisUtterance(text);
+        utterance.onend = () => {
+          setPlayingAudioId(null);
+        };
+        utterance.onerror = () => {
+          setPlayingAudioId(null);
+        };
         const voices = window.speechSynthesis.getVoices();
         const engVoice = voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('natural')) ||
                          voices.find(v => v.lang.startsWith('en')) ||
@@ -89,9 +283,13 @@ export default function DashboardView({
         window.speechSynthesis.speak(utterance);
       } else {
         alert("Speech synthesis is not supported on this device.");
+        setPlayingAudioId(null);
       }
     }
     
+    // Add quest progress
+    updateQuestProgress('vibe_voice');
+
     try { WebApp.HapticFeedback.impactOccurred('light'); } catch (err) {}
   };
 
@@ -159,10 +357,52 @@ export default function DashboardView({
     }
   }, [currentUser?.id]);
 
-  // Reset card mode facts/radar on card swipe
+  // Reset card mode facts/radar and translation state on card swipe
   useEffect(() => {
     setCardMode('facts');
+    setTranslatedProfile(null);
+    setIsTranslating(false);
   }, [currentIndex]);
+
+  // Handle manual translation actions (X/Twitter style)
+  const handleToggleTranslation = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!activeProfile) return;
+
+    try { WebApp.HapticFeedback.impactOccurred('light'); } catch(err){}
+
+    if (translatedProfile) {
+      setTranslatedProfile(null);
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const targetLang = appLanguage;
+      const trans = await translateProfile(
+        {
+          username: activeProfile.username,
+          role: activeProfile.role,
+          bio: activeProfile.bio,
+          tags: activeProfile.tags,
+          ai_facts: activeProfile.ai_facts
+        },
+        targetLang
+      );
+      setTranslatedProfile({
+        id: activeProfile.id,
+        role: trans.role,
+        bio: trans.bio,
+        tags: trans.tags,
+        ai_facts: trans.ai_facts,
+        lang: targetLang
+      });
+    } catch (err) {
+      console.error("Translation operation failed:", err);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   // Handle server-seed selection or offline match filters based on the selected role capsule 
   const getFilteredProfiles = () => {
@@ -255,13 +495,16 @@ export default function DashboardView({
   const executeSwipeWithHaptics = async (direction: 'left' | 'right') => {
     if (!activeProfile) return;
 
+    // Update quest progress
+    updateQuestProgress('swipe_wave');
+
     // Trigger haptic rumble
     try {
-      if (direction === 'right') {
-        WebApp.HapticFeedback.impactOccurred('medium');
-      } else {
-        WebApp.HapticFeedback.impactOccurred('light');
-      }
+       if (direction === 'right') {
+         WebApp.HapticFeedback.impactOccurred('medium');
+       } else {
+         WebApp.HapticFeedback.impactOccurred('light');
+       }
     } catch (e) {
       // Ignored outside TG mini app environment
     }
@@ -328,7 +571,16 @@ export default function DashboardView({
             )}
           </button>
         </div>
-        <div className="flex gap-1.5 overflow-x-auto pb-1.5 scrollbar-none scroll-smooth">
+        <div 
+          ref={filterScrollRef}
+          onMouseDown={startHeaderDragScroll}
+          onMouseLeave={stopHeaderDragScroll}
+          onMouseUp={stopHeaderDragScroll}
+          onMouseMove={executeHeaderDragScroll}
+          className={`flex gap-1.5 overflow-x-auto pb-1.5 scrollbar-none scroll-smooth select-none ${
+            isDragScrollingHeader ? 'cursor-grabbing' : 'cursor-grab'
+          }`}
+        >
           {['All', 'Developers', 'Designers', 'Founders', 'Creators'].map((roleOpt) => {
             const isSel = selectedRoleFilter === roleOpt;
             return (
@@ -340,6 +592,7 @@ export default function DashboardView({
                   try { WebApp.HapticFeedback.impactOccurred('light'); } catch (e) {}
                   setSelectedRoleFilter(roleOpt);
                   setCurrentIndex(0); // reset active card to 0 for this filtered deck
+                  updateQuestProgress('filter_role');
                 }}
                 className={`flex-none px-4 h-[32px] rounded-full text-[11px] font-extrabold uppercase tracking-wide border select-none cursor-pointer flex items-center justify-center relative transition-colors duration-200 ${
                   isSel
@@ -360,6 +613,66 @@ export default function DashboardView({
           })}
         </div>
       </div>
+
+      {/* Daily Cosmic Quest interactive panel */}
+      {activeQuest && (
+        <div className="w-full px-4 pt-1.5 pb-0.5 shrink-0 z-20" id="daily-quest-banner">
+          <div className={`rounded-2xl p-3 border transition-all duration-300 ${
+            activeQuest.rewardClaimed
+              ? 'bg-zinc-100/60 border-black/[0.03] text-[#1A1A1A]/40'
+              : activeQuest.completed
+              ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 animate-pulse'
+              : 'bg-[#00C896]/5 border-[#00C896]/15 text-[#1A7A55]'
+          }`}>
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[14px]">
+                  {activeQuest.rewardClaimed ? "✅" : activeQuest.completed ? "🎁" : "💫"}
+                </span>
+                <div className="text-left font-sans leading-snug">
+                  <span className="text-[8px] font-black uppercase tracking-widest font-mono opacity-80 block text-[#1A7A55]">
+                    // DAILY COSMIC QUEST (ЕЖЕДНЕВНЫЙ КВЕСТ)
+                  </span>
+                  <span className="text-[11.5px] font-black leading-tight block">
+                    {activeQuest.title}: {activeQuest.description}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="shrink-0 flex items-center">
+                {activeQuest.rewardClaimed ? (
+                  <span className="text-[9px] font-mono font-black tracking-wider uppercase bg-zinc-200 text-[#1A1A1A]/70 px-2 py-1 rounded-lg">
+                    Claimed +5⚡
+                  </span>
+                ) : activeQuest.completed ? (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={claimQuestReward}
+                    className="px-2.5 h-7 rounded-xl bg-amber-500 text-[#1A1A1A] text-[9.5px] font-black uppercase tracking-wider shadow-md hover:bg-amber-600 transition cursor-pointer flex items-center gap-1 shrink-0"
+                  >
+                    <span>CLAIM +5⚡</span>
+                  </motion.button>
+                ) : (
+                  <span className="text-[10px] font-mono font-black bg-white/60 text-[#1A7A55] border border-[#00C896]/10 px-2 py-0.5 rounded-md">
+                    {activeQuest.currentCount}/{activeQuest.targetCount}
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            {/* Actionable mini progress tracker */}
+            {!activeQuest.rewardClaimed && (
+              <div className="w-full h-1 bg-black/[0.05] rounded-full mt-2 overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-500 ${activeQuest.completed ? 'bg-amber-500' : 'bg-[#00C896]'}`}
+                  style={{ width: `${(activeQuest.currentCount / activeQuest.targetCount) * 100}%` }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 82% height container with drag Ref bounds constraints wrapper attached */}
       <div 
@@ -459,22 +772,74 @@ export default function DashboardView({
                           <h2 className="text-[26px] font-extrabold tracking-tight text-[#1A1A1A] leading-tight flex items-center justify-center gap-1.5">
                             <span>{activeProfile.name}</span>
                             <span className="text-[#1A1A1A]/50 font-medium">/{activeProfile.age || 22}</span>
-                            <button
-                              type="button"
-                              onClick={(e) => handlePlayCandidateVoice(activeProfile, e)}
-                              className="w-7 h-7 rounded-full bg-[#1A7A55]/10 hover:bg-[#1A7A55]/20 active:scale-95 transition flex items-center justify-center cursor-pointer pointer-events-auto shrink-0 relative"
-                              title="Listen to Voice Bio"
-                            >
-                              <span className="text-[12px]">🎙️</span>
-                              <span className="absolute -top-0.5 -right-0.5 flex h-1.5 w-1.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-                              </span>
-                            </button>
+                            {playingAudioId === activeProfile.id ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (window.speechSynthesis) window.speechSynthesis.cancel();
+                                  if ((window as any).currentPlayingAudio) (window as any).currentPlayingAudio.pause();
+                                  setPlayingAudioId(null);
+                                }}
+                                className="h-7 px-2.5 rounded-full bg-[#00C896]/15 hover:bg-[#00C896]/25 text-[#1A7A55] border border-[#00C896]/40 transition flex items-center justify-center gap-1.5 cursor-pointer pointer-events-auto shrink-0 select-none animate-pulse"
+                                title="Stop Voice Bio"
+                              >
+                                <div className="flex items-center gap-[2.5px] h-3">
+                                  {[1, 2, 3, 4, 5].map((bar) => (
+                                    <motion.span
+                                      key={bar}
+                                      animate={{
+                                        height: ["30%", "100%", "45%", "85%", "30%"]
+                                      }}
+                                      transition={{
+                                        duration: 0.75,
+                                        repeat: Infinity,
+                                        repeatType: "mirror",
+                                        ease: "easeInOut",
+                                        delay: bar * 0.1
+                                      }}
+                                      className="w-[1.5px] h-full bg-[#1A7A55] rounded-full origin-center"
+                                    />
+                                  ))}
+                                </div>
+                                <span className="text-[9px] font-black uppercase tracking-wider">Stop</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => handlePlayCandidateVoice(activeProfile, e)}
+                                className="w-7 h-7 rounded-full bg-[#1A7A55]/10 hover:bg-[#1A7A55]/20 active:scale-95 transition flex items-center justify-center cursor-pointer pointer-events-auto shrink-0 relative animate-none"
+                                title="Listen to Voice Bio"
+                              >
+                                <span className="text-[12px]">🎙️</span>
+                                <span className="absolute -top-0.5 -right-0.5 flex h-1.5 w-1.5">
+                                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                                </span>
+                              </button>
+                            )}
                           </h2>
                           <p className="text-[14px] text-[#1A1A1A]/70 font-bold mt-1">
-                            @{activeProfile.username || 'user'} • <span className="text-[#1A7A55] font-extrabold">{activeProfile.role}</span>
+                            @{activeProfile.username || 'user'} • <span className="text-[#1A7A55] font-extrabold">{translatedProfile ? translatedProfile.role : activeProfile.role}</span>
                           </p>
+                          {/* Live Translate Button like on X (Twitter) platform */}
+                          <div className="flex justify-center mt-1 pointer-events-auto">
+                            <button
+                              type="button"
+                              onClick={handleToggleTranslation}
+                              className="text-[9.5px] font-black uppercase tracking-wider text-[#1A7A55] hover:text-[#00C896] bg-white/50 hover:bg-white/75 px-3 py-1 rounded-[100px] border border-black/[0.04] transition active:scale-95 duration-100 flex items-center gap-1.5 cursor-pointer shadow-xs select-none"
+                            >
+                              {isTranslating ? (
+                                <span className="flex items-center gap-1">
+                                  <span className="w-2.5 h-2.5 rounded-full border-2 border-[#1A7A55] border-t-transparent animate-spin inline-block" />
+                                  <span>{appLanguage === 'ru' ? 'Переводим...' : 'Translating...'}</span>
+                                </span>
+                              ) : translatedProfile ? (
+                                <span>🌐 {appLanguage === 'ru' ? 'Показать оригинал' : 'Show original'}</span>
+                              ) : (
+                                <span>🌐 {appLanguage === 'ru' ? 'Перевести био' : 'Translate bio'}</span>
+                              )}
+                            </button>
+                          </div>
                         </div>
 
                         {/* WHITE BOTTOM EXPANSION HOOD */}
@@ -497,7 +862,7 @@ export default function DashboardView({
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={(e) => { e.stopPropagation(); setCardMode('radar'); }}
+                                  onClick={(e) => { e.stopPropagation(); setCardMode('radar'); updateQuestProgress('radar'); }}
                                   className={`px-2 py-0.5 text-[9px] font-extrabold uppercase rounded-md transition cursor-pointer ${cardMode === 'radar' ? 'bg-[#1A7A55]' : 'text-[#6B7280]'}`}
                                   style={{ color: cardMode === 'radar' ? '#FFFFFF' : undefined }}
                                 >
@@ -508,9 +873,16 @@ export default function DashboardView({
 
                             {cardMode === 'facts' ? (
                               <div className="flex-grow flex flex-col justify-center">
+                                {/* Biography / Description quote */}
+                                {(translatedProfile ? translatedProfile.bio : activeProfile.bio) && (
+                                  <p className="text-[11px] text-[#1A1A1A]/85 font-black mb-1.5 italic leading-tight text-center max-h-12 overflow-y-auto w-full">
+                                    "{translatedProfile ? translatedProfile.bio : activeProfile.bio}"
+                                  </p>
+                                )}
+
                                 {/* Tags system representing the schema */}
-                                <div className="flex flex-wrap gap-1 mb-1.5">
-                                  {(activeProfile.tags || []).slice(0, 4).map((tag: string) => (
+                                <div className="flex flex-wrap gap-1 mb-1.5 justify-center">
+                                  {(translatedProfile ? translatedProfile.tags : (activeProfile.tags || [])).slice(0, 4).map((tag: string) => (
                                     <span
                                       key={tag}
                                       className="bg-[#E8F5EE] text-[#1A7A55] font-extrabold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider"
@@ -521,15 +893,21 @@ export default function DashboardView({
                                 </div>
 
                                 {/* Render their 3 AI-generated facts if present */}
-                                {activeProfile.ai_facts && activeProfile.ai_facts.length > 0 && (
+                                {(translatedProfile ? translatedProfile.ai_facts : activeProfile.ai_facts) && (translatedProfile ? translatedProfile.ai_facts : activeProfile.ai_facts).length > 0 && (
                                   <div className="space-y-0.5 mt-0.5 pb-0.5 text-left border-y border-black/[0.03] py-1">
-                                    {activeProfile.ai_facts.map((fact: string, fIdx: number) => (
-                                      <div key={fIdx} className="flex items-center gap-1.5 text-[10.5px] font-bold text-[#1A1A1A]/80 leading-tight">
+                                    {(translatedProfile ? translatedProfile.ai_facts : activeProfile.ai_facts).slice(0, 3).map((fact: string, fIdx: number) => (
+                                      <div key={fIdx} className="flex items-center gap-1.5 text-[10px] font-bold text-[#1A1A1A]/80 leading-tight">
                                         <span className="text-[#00C896] text-[9px] shrink-0 font-mono">⚡</span>
                                         <span className="truncate">{fact}</span>
                                       </div>
                                     ))}
                                   </div>
+                                )}
+
+                                {translatedProfile && (
+                                  <span className="text-[8px] text-[#1A7A55]/75 font-mono font-extrabold mt-1 text-center block uppercase tracking-wider scale-[0.95]">
+                                    ⚡ Translated with Matcha AI
+                                  </span>
                                 )}
                               </div>
                             ) : (
@@ -595,7 +973,7 @@ export default function DashboardView({
 
               <button
                 onClick={handleResetDeck}
-                className="px-6 h-[48px] rounded-[100px] border border-black/[0.1] bg-[#1A1A1A] text-white text-xs font-bold uppercase tracking-wider hover:opacity-90 active:scale-95 transition cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
+                className="px-6 h-[48px] rounded-[100px] bg-[#00C896] hover:bg-[#00B083] text-[#1A1A1A] text-xs font-black uppercase tracking-wider active:scale-95 transition-all duration-300 cursor-pointer shadow-md flex items-center justify-center gap-1.5 hover:scale-[1.02] select-none border-none"
                 id="reset-swipe-deck-btn"
               >
                 <span>Reset Wave Deck</span>

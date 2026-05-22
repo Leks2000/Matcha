@@ -22,10 +22,126 @@ import {
   Edit3,
   Camera,
   Upload,
-  Plus
+  Plus,
+  Globe
 } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { getCurrentUser, resetUserSwipes, onboardUser, generateFactsFromChat, compressAndResizeImage } from './lib/api';
+
+export const TRANSLATIONS = {
+  en: {
+    appTitle: "Matcha Bot",
+    appSub: "Vibe Matcher",
+    swipe: "SWIPE",
+    profile: "PROFILE",
+    editHeading: "Edit Profile Details",
+    displayName: "Display Name",
+    age: "Age",
+    bioDesc: "Bio / Description",
+    voiceGreetingHeader: "🎙️ Voice Greeting (Голосовой Вайб)",
+    active: "Active",
+    noRecording: "No voice record. Speak for 5 sec!",
+    recordAudio: "Record Audio",
+    stop: "Stop ⏹️",
+    saveDetails: "Save Details",
+    saving: "Saving...",
+    modifyFacts: "Modify My Vibe Facts",
+    delete: "Delete",
+    addNewFact: "Add New Custom Fact",
+    confirmFacts: "Confirm Edited Facts",
+    groqTitle: "Groq AI Assist Chat",
+    groqDesc: "Write everything about yourself conversationally (habits, hobbies, tea choice) and our neuron engine will rewrite your 3 facts!",
+    placeholderChat: "I drink matcha late at night, sleep with a podcast, lost money on dogicoins, and build interfaces...",
+    writeFactsBtn: "Rewrite Facts via AI",
+    analyzing: "Analyzing traits...",
+    inviteFounder: "Invite a founder",
+    inviteDesc: "Generate ref links and score +5 stack priority boost for both when they join.",
+    growth: "GROWTH ⚡",
+    copied: "Copied",
+    copy: "Copy",
+    energySignature: "// CONFIG ENERGY SIGNATURE",
+    likedToday: "Liked Today",
+    streak: "Streak",
+    boostPts: "Boost Pts",
+    secureSettingsHeading: "// SETTINGS SECURE",
+    ambientPushes: "Ambient Pushes",
+    ghostMode: "Ghost Mode",
+    restartOnboarding: "Restart Onboarding",
+    resetWaveHistory: "Reset Wave History",
+    resetWaveDeck: "Reset Wave Deck",
+    voiceBioPrompt: "Listen to Voice Bio",
+    voiceBioStop: "Stop",
+    scoreBadge: "Matcha Vibe Score",
+    radarView: "Radar Comparison",
+    vibeReasonHeader: "✨ COGNITIVE ALIGNMENT REASON",
+    factsHeader: "🤖 DEEP LIFESTYLE FACTS",
+    vibeRadarText: "Vibe Radar vectors compared successfully",
+    translateBtn: "🌐 Translate to Russian",
+    translating: "Translating...",
+    translatedBy: "Translated by AI • Show original",
+    originalTextBtn: "Show Original Text",
+    noProfilesTitle: "Vibe Wave Ended 🌊",
+    noProfilesDesc: "There are no new minds near your wave frequency today. Tap the green button below to reset your swipe data deck and replay starting from matching nodes!",
+    questTitle: "// DAILY COSMIC QUEST",
+    resetWaveDeckBtn: "Reset Wave Deck"
+  },
+  ru: {
+    appTitle: "Matcha Bot",
+    appSub: "Вайб Радар",
+    swipe: "СВАЙП",
+    profile: "ПРОФИЛЬ",
+    editHeading: "Редактировать Профиль",
+    displayName: "Имя (Никнейм)",
+    age: "Возраст",
+    bioDesc: "О себе (Био)",
+    voiceGreetingHeader: "🎙️ Голосовая Визитка (Вайб Голоса)",
+    active: "Активен",
+    noRecording: "Нет записи. Наговорите 5 секунд вайба!",
+    recordAudio: "Записать голос",
+    stop: "Стоп ⏹️",
+    saveDetails: "Сохранить данные",
+    saving: "Сохранение...",
+    modifyFacts: "Мои вайб-факты",
+    delete: "Удалить",
+    addNewFact: "Добавить новый факт",
+    confirmFacts: "Подтвердить факты",
+    groqTitle: "Ассистент Groq AI Chat",
+    groqDesc: "Расскажите о себе в чате (привычки, увлечения, любимый чай), и нейросеть перепишет 3 ваших факта!",
+    placeholderChat: "Я пью матчу поздно ночью, засыпаю под подкасты, потерял немного денег на догах и верстаю сайты...",
+    writeFactsBtn: "Переписать факты с помощью AI",
+    analyzing: "Анализируем характер...",
+    inviteFounder: "Пригласить друга",
+    inviteDesc: "Создайте ссылку и получите +5 очков приоритета для обоих при регистрации.",
+    growth: "РОСТ ⚡",
+    copied: "Скопировано",
+    copy: "Копировать",
+    energySignature: "// СИГНАТУРА ЭНЕРГИИ",
+    likedToday: "Свайпов сегодня",
+    streak: "Дни",
+    boostPts: "Очки буста",
+    secureSettingsHeading: "// НАСТРОЙКИ СЕКЬЮРНОСТИ",
+    ambientPushes: "Пуш-уведомления",
+    ghostMode: "Режим невидимки",
+    restartOnboarding: "Начать онбординг заново",
+    resetWaveHistory: "Сбросить историю волны",
+    resetWaveDeck: "Перезагрузить Wave Deck",
+    voiceBioPrompt: "Слушать аудио-визитку",
+    voiceBioStop: "Стоп",
+    scoreBadge: "Матча Вайб Совпадение",
+    radarView: "Вайб Радар",
+    vibeReasonHeader: "✨ КОГНИТИВНОЕ СОВПАДЕНИЕ",
+    factsHeader: "🤖 ИНТЕРЕСНЫЕ AI ФАКТЫ",
+    vibeRadarText: "Сравнение векторов вайба завершено",
+    translateBtn: "🌐 Перевести на Русский",
+    translating: "Переводим...",
+    translatedBy: "Переведено с помощью AI • Показать оригинал",
+    originalTextBtn: "Показать оригинал",
+    noProfilesTitle: "Конец Волны 🌊",
+    noProfilesDesc: "Сегодня больше нет свободных умов на вашей частоте. Нажмите зеленую кнопку ниже, чтобы сбросить историю и снова запустить радар матчей!",
+    questTitle: "// ЕЖЕДНЕВНЫЙ КВЕСТ",
+    resetWaveDeckBtn: "Перезапустить колоду"
+  }
+};
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -36,6 +152,27 @@ export default function App() {
   const [isPremiumOpen, setIsPremiumOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [inviteFeedback, setInviteFeedback] = useState("");
+
+  // Automatic localized language state (X-style translator)
+  const [appLanguage, setAppLanguage] = useState<'en' | 'ru'>(() => {
+    try {
+      const saved = localStorage.getItem('matcha_app_lang');
+      if (saved === 'ru' || saved === 'en') return saved;
+      
+      const tgLang = WebApp.initDataUnsafe?.user?.language_code;
+      if (tgLang && tgLang.toLowerCase().startsWith('ru')) return 'ru';
+    } catch (e) {}
+    return 'en';
+  });
+
+  const toggleAppLanguage = () => {
+    try { WebApp.HapticFeedback.impactOccurred('medium'); } catch(e){}
+    setAppLanguage(prev => {
+      const next = prev === 'en' ? 'ru' : 'en';
+      localStorage.setItem('matcha_app_lang', next);
+      return next;
+    });
+  };
 
   // Top-level editable profile states
   const [profileName, setProfileName] = useState("");
@@ -56,6 +193,7 @@ export default function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [recSeconds, setRecSeconds] = useState(0);
+  const [isLocalVoicePlaying, setIsLocalVoicePlaying] = useState(false);
 
   const startVoiceRecording = async () => {
     try {
@@ -399,6 +537,8 @@ export default function App() {
     );
   }
 
+  const t = TRANSLATIONS[appLanguage];
+
   return (
     <TelegramFrame
       streakDays={currentUser.streakDays}
@@ -432,6 +572,7 @@ export default function App() {
                     currentUser={currentUser}
                     onOpenPremium={() => setIsPremiumOpen(true)}
                     onUpdateCurrentUser={handleUpdateCurrentUser}
+                    appLanguage={appLanguage}
                   />
                 </motion.div>
               )}
@@ -488,13 +629,13 @@ export default function App() {
                   <div className="bg-white border border-black/[0.04] p-5 rounded-[28px] space-y-4 shadow-xs">
                     <div className="flex items-center gap-1.5 mb-1 text-[#1A7A55]">
                       <User className="h-4 w-4" />
-                      <h3 className="text-sm font-black text-[#1A1A1A]">Edit Profile Details</h3>
+                      <h3 className="text-sm font-black text-[#1A1A1A]">{t.editHeading}</h3>
                     </div>
 
                     <div className="grid grid-cols-3 gap-3">
                       <div className="col-span-2">
                         <label className="block text-[9.5px] font-bold text-[#6B7280] mb-1 uppercase tracking-wider">
-                          Display Name
+                          {t.displayName}
                         </label>
                         <input
                           type="text"
@@ -506,7 +647,7 @@ export default function App() {
 
                       <div>
                         <label className="block text-[9.5px] font-bold text-[#6B7280] mb-1 uppercase tracking-wider">
-                          Age
+                          {t.age}
                         </label>
                         <input
                           type="number"
@@ -519,24 +660,24 @@ export default function App() {
 
                     <div>
                       <label className="block text-[9.5px] font-bold text-[#6B7280] mb-1 uppercase tracking-wider">
-                        Bio / Description
+                        {t.bioDesc}
                       </label>
                       <input
                         type="text"
                         value={profileBio}
                         onChange={(e) => setProfileBio(e.target.value)}
                         className="w-full h-[40px] px-3 bg-[#F5F5F0] border border-black/[0.05] rounded-xl text-[12.5px] font-bold text-[#1A1A1A] focus:outline-none focus:border-[#00C896]"
-                        placeholder="Say something about yourself..."
+                        placeholder={appLanguage === 'ru' ? "Расскажите немного о себе..." : "Say something about yourself..."}
                       />
                     </div>
 
                     {/* Audio-визитка (Voice Bio) Section */}
                     <div className="space-y-2 border-t border-black/[0.04] pt-3" id="voice-bio-panel">
                       <div className="flex items-center justify-between">
-                        <label className="block text-[10px] font-black text-[#6B7280] uppercase tracking-wider flex items-center gap-1.5">
-                          <span>🎙️ Voice Greeting (Голосовой Вайб)</span>
+                        <label className="block text-[10px] font-black text-[#6B7280] uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
+                          <span>{t.voiceGreetingHeader}</span>
                           {localVoiceBio && (
-                            <span className="text-[9px] text-[#00C896] bg-[#00C896]/10 px-1.5 py-0.5 rounded-full uppercase font-bold">Active</span>
+                            <span className="text-[9px] text-[#00C896] bg-[#00C896]/10 px-1.5 py-0.5 rounded-full uppercase font-bold">{t.active}</span>
                           )}
                         </label>
                       </div>
@@ -552,15 +693,58 @@ export default function App() {
                           </div>
                         ) : localVoiceBio ? (
                           <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => {
-                                const audio = new Audio(localVoiceBio);
-                                audio.play();
-                              }}
-                              className="h-[32px] px-3 rounded-lg bg-[#00C896]/15 hover:bg-[#00C896]/25 text-[#1A7A55] font-extrabold text-[11px] uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer"
-                            >
-                              ▶️ Play Voice Bio
-                            </button>
+                            {isLocalVoicePlaying ? (
+                              <button
+                                onClick={() => {
+                                  if ((window as any).currentUserAudio) {
+                                    (window as any).currentUserAudio.pause();
+                                  }
+                                  setIsLocalVoicePlaying(false);
+                                }}
+                                className="h-[32px] px-3 rounded-lg bg-[#FF3B30]/15 hover:bg-[#FF3B30]/25 text-[#FF3B30] font-extrabold text-[11px] uppercase tracking-wider transition flex items-center gap-2 cursor-pointer select-none animate-pulse"
+                              >
+                                <div className="flex items-center gap-[2px] h-2.5">
+                                  {[1, 2, 3, 4, 5].map((bar: number) => (
+                                    <motion.span
+                                      key={bar}
+                                      animate={{
+                                        height: ["30%", "100%", "45%", "85%", "30%"]
+                                      }}
+                                      transition={{
+                                        duration: 0.75,
+                                        repeat: Infinity,
+                                        repeatType: "mirror",
+                                        ease: "easeInOut",
+                                        delay: bar * 0.1
+                                      }}
+                                      className="w-[1.5px] h-full bg-[#FF3B30] rounded-full origin-center"
+                                    />
+                                  ))}
+                                </div>
+                                <span>Stop Bio</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  if ((window as any).currentUserAudio) {
+                                    (window as any).currentUserAudio.pause();
+                                  }
+                                  const audio = new Audio(localVoiceBio);
+                                  (window as any).currentUserAudio = audio;
+                                  setIsLocalVoicePlaying(true);
+                                  audio.onended = () => {
+                                    setIsLocalVoicePlaying(false);
+                                  };
+                                  audio.onerror = () => {
+                                    setIsLocalVoicePlaying(false);
+                                  };
+                                  audio.play();
+                                }}
+                                className="h-[32px] px-3 rounded-lg bg-[#00C896]/15 hover:bg-[#00C896]/25 text-[#1A7A55] font-extrabold text-[11px] uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer"
+                              >
+                                ▶️ {appLanguage === 'ru' ? 'Слушать визитку' : 'Play Voice Bio'}
+                              </button>
+                            )}
                             <button
                               onClick={deleteVoiceBio}
                               className="h-[32px] w-[32px] rounded-lg bg-red-100/80 hover:bg-red-200/80 text-red-600 transition flex items-center justify-center text-xs cursor-pointer"
@@ -570,7 +754,7 @@ export default function App() {
                             </button>
                           </div>
                         ) : (
-                          <span className="text-[10px] text-[#6B7280] font-bold">Нет аудиозаписи. Запишите 5 сек голоса!</span>
+                          <span className="text-[10px] text-[#6B7280] font-bold">{t.noRecording}</span>
                         )}
 
                         <div>
@@ -579,14 +763,15 @@ export default function App() {
                               onClick={stopVoiceRecording}
                               className="h-[32px] px-3 rounded-lg bg-red-500 text-white font-extrabold text-[10px] uppercase tracking-wider hover:opacity-95 transition cursor-pointer"
                             >
-                              Stop ⏹️
+                              {t.stop}
                             </button>
                           ) : (
                             <button
                               onClick={startVoiceRecording}
-                              className="h-[32px] px-3 rounded-lg bg-black text-[#00C896] font-extrabold text-[10px] uppercase tracking-wider hover:opacity-90 transition flex items-center gap-1 cursor-pointer"
+                              className="h-[32px] px-3.5 rounded-xl bg-[#00C896]/15 hover:bg-[#00C896]/25 border border-[#00C896]/45 text-[#1A7A55] font-black text-[10px] uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5 cursor-pointer hover:scale-[1.03] select-none"
                             >
-                              Record 🔴
+                              <span className="w-2 h-2 rounded-full bg-[#FF3B30] animate-pulse shrink-0" />
+                              <span>{t.recordAudio}</span>
                             </button>
                           )}
                         </div>
@@ -599,7 +784,7 @@ export default function App() {
                       className="w-full h-[46px] rounded-xl bg-[#00C896] text-[#1A1A1A] font-extrabold text-xs uppercase tracking-wider hover:opacity-90 active:scale-[0.98] transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer mt-2"
                     >
                       <Save className="h-4 w-4" />
-                      <span>{saveStatus || "Save Details"}</span>
+                      <span>{saveStatus ? (saveStatus === "Profile Saved!" ? (appLanguage === "ru" ? "Профиль Сохранен!" : "Profile Saved!") : saveStatus) : t.saveDetails}</span>
                     </button>
                   </div>
 
@@ -763,36 +948,55 @@ export default function App() {
                       <span className="text-xl font-black text-[#1A1A1A] block font-mono">
                         {currentUser.matchesToday}
                       </span>
-                      <span className="text-[10px] text-[#6B7280] font-extrabold uppercase mt-1 block">Liked Today</span>
+                      <span className="text-[10px] text-[#6B7280] font-extrabold uppercase mt-1 block">{t.likedToday}</span>
                     </GlassCard>
 
                     <GlassCard className="p-3 text-center border border-black/[0.04]">
                       <span className="text-xl font-black text-[#1A1A1A] block font-mono">
                         {currentUser.streakDays}d
                       </span>
-                      <span className="text-[10px] text-[#6B7280] font-extrabold uppercase mt-1 block">Streak</span>
+                      <span className="text-[10px] text-[#6B7280] font-extrabold uppercase mt-1 block">{t.streak}</span>
                     </GlassCard>
 
                     <GlassCard className="p-3 text-center border border-black/[0.04]">
                       <span className="text-xl font-black text-[#1A1A1A] block font-mono">
                         +{currentUser.priorityPoints || 0}
                       </span>
-                      <span className="text-[10px] text-[#6B7280] font-extrabold uppercase mt-1 block">Boost Pts</span>
+                      <span className="text-[10px] text-[#6B7280] font-extrabold uppercase mt-1 block">{t.boostPts}</span>
                     </GlassCard>
                   </div>
 
                   {/* Secure Settings List */}
                   <div className="space-y-2 pt-1">
                     <h4 className="text-[10px] font-bold tracking-[1.5px] uppercase text-[#1A7A55] ml-1 block">
-                      // SETTINGS SECURE
+                      {t.secureSettingsHeading}
                     </h4>
 
                     <GlassCard className="overflow-hidden border border-black/[0.04] rounded-2xl">
                       <div className="divide-y divide-black/[0.03]">
+                        {/* Interactive App Language Swapper */}
+                        <div
+                          onClick={toggleAppLanguage}
+                          className="h-[48px] px-4 flex items-center justify-between hover:bg-black/[0.01] cursor-pointer transition duration-150"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Globe className="h-4.5 w-4.5 text-[#00C896]" />
+                            <span className="text-[13px] font-extrabold text-[#1A1A1A]">
+                              {appLanguage === 'ru' ? 'Язык приложения' : 'App Language'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-black uppercase text-[#1A7A55] bg-[#00C896]/10 px-2 py-0.5 rounded-md">
+                              {appLanguage === 'en' ? 'EN 🇺🇸' : 'RU 🇷🇺'}
+                            </span>
+                            <ChevronRight className="h-4 w-4 text-zinc-300" />
+                          </div>
+                        </div>
+
                         {[
-                          { id: 'notif', name: 'Ambient Pushes', icon: Bell },
-                          { id: 'privacy', name: 'Ghost Mode', icon: Shield },
-                          { id: 'onboard', name: 'Restart Onboarding', icon: Sparkles }
+                          { id: 'notif', name: t.ambientPushes, icon: Bell },
+                          { id: 'privacy', name: t.ghostMode, icon: Shield },
+                          { id: 'onboard', name: t.restartOnboarding, icon: Sparkles }
                         ].map((item) => (
                           <div
                             key={item.id}
@@ -823,7 +1027,7 @@ export default function App() {
                       className="w-full text-center py-4 bg-[#00C896] hover:bg-[#00B285] text-[#1A1A1A] rounded-[100px] h-[56px] text-xs font-black uppercase tracking-widest cursor-pointer transition active:scale-[0.98] shadow-sm flex items-center justify-center gap-1"
                       id="edit-profile-btn"
                     >
-                      <span>Reset Wave History</span>
+                      <span>{t.resetWaveHistory}</span>
                     </button>
                   </div>
                 </motion.div>
@@ -835,8 +1039,8 @@ export default function App() {
           {/* Bottom navigation (White, clean thin top border, 64px, labels SWIPE and PROFILE only) */}
           <nav className="h-16 bg-white border-t border-black/[0.05] flex items-center justify-around px-2 pb-[env(safe-area-inset-bottom)] z-20 sticky bottom-0">
             {[
-              { id: 'discover', label: 'SWIPE', icon: Sparkles },
-              { id: 'profile', label: 'PROFILE', icon: User }
+              { id: 'discover', label: t.swipe, icon: Sparkles },
+              { id: 'profile', label: t.profile, icon: User }
             ].map((tab) => {
               const isActive = mobileTab === tab.id;
               return (

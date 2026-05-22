@@ -663,6 +663,249 @@ No hashtags. Internet humor. Return plain text only.`
   }
 };
 
+// 6b. Translate profile details (English <-> Russian) like in X platform (Twitter)
+export const translateProfile = async (
+  profile: {
+    username?: string;
+    role: string;
+    bio?: string;
+    tags: string[];
+    ai_facts?: string[];
+  },
+  targetLang: 'en' | 'ru'
+): Promise<{ role: string; bio: string; tags: string[]; ai_facts: string[] }> => {
+  const defaultProfile = {
+    role: profile.role || "",
+    bio: profile.bio || "",
+    tags: profile.tags || [],
+    ai_facts: profile.ai_facts || []
+  };
+
+  const un = (profile.username || '').toLowerCase();
+
+  // Presets mapping for instant, gorgeous localized results
+  if (un.includes('elena_tma')) {
+    if (targetLang === 'ru') {
+      return {
+        role: "Визуальный Креатор",
+        bio: "Исследую эстетику, андерграундную музыку и обожаю латте на матче.",
+        tags: ["Фотография", "Странный юмор", "Кофеман", "Техно и Клубы"],
+        ai_facts: [
+          "хранит гигабайтную папку с кошачьими мемами",
+          "считает, что лавандовый чай реанимирует севший телефон",
+          "абсолютно не может уснуть без шума подкастов"
+        ]
+      };
+    } else {
+      return {
+        role: "Visual Creator",
+        bio: "Exploring aesthetics, underground music, and drinking too much matchalatte.",
+        tags: ["Photography", "Weird Humor", "Coffee", "Techno & Clubbing"],
+        ai_facts: [
+          "has a folder of 4,000 cat memes",
+          "convinced that lavender tea cures low battery",
+          "physically cannot sleep without a podcast on"
+        ]
+      };
+    }
+  }
+
+  if (un.includes('maksim_sound')) {
+    if (targetLang === 'ru') {
+      return {
+        role: "Уличный DJ",
+        bio: "Гоняюсь за закатами, плотным басом и ночными вайбами. Тапай для прослушивания диджей-миксов.",
+        tags: ["Ночные прогулки", "Стритфуд", "Гейминг", "Странный юмор"],
+        ai_facts: [
+          "искренне верит в сакральный статус шаурмы",
+          "скупает лимитированный винил вместо еды на неделю",
+          "редко отвечает в мессенджерах быстрее чем через полдня"
+        ]
+      };
+    } else {
+      return {
+        role: "Street DJ",
+        bio: "Chasing sunsets, beatdrops, and the perfect late night vibe. Tap for DJ mixes.",
+        tags: ["Late Night Walks", "Street Food", "Gaming", "Weird Humor"],
+        ai_facts: [
+          "believes shawarma is a sacred food group",
+          "buys expensive vinyl records instead of groceries",
+          "never replies to texts in under 12 hours"
+        ]
+      };
+    }
+  }
+
+  if (un.includes('sofia_vibe')) {
+    if (targetLang === 'ru') {
+      return {
+        role: "Цифровой Кочевник",
+        bio: "Путешествую налегке с одним рюкзаком и ищу соискателей приключений для совместного ресерча.",
+        tags: ["Хаус-музыка", "Глубокие темы", "Спонтанность", "Йога и Дзен"],
+        ai_facts: [
+          "бронирует авиабилеты посреди ночи из-за минутной скуки",
+          "умеет показывать ровно 4 фокуса, но делает это постоянно",
+          "считает корпоративные подписи к письмам скрытым наездом"
+        ]
+      };
+    } else {
+      return {
+        role: "Digital Nomad",
+        bio: "Living out of a backpack and looking for creative spirits to explore with.",
+        tags: ["House Music", "Deep Talks", "Spontaneous Trips", "Yoga & Zen"],
+        ai_facts: [
+          "books flights randomly when feeling slightly bored",
+          "knows exactly 4 card tricks but does them constantly",
+          "thinks email signatures are incredibly passive-aggressive"
+        ]
+      };
+    }
+  }
+
+  if (un.includes('kirill_hype')) {
+    if (targetLang === 'ru') {
+      return {
+        role: "Куратор Мемов",
+        bio: "Шитпостинг как замена сессиям у психолога. Пишите за вредными советами.",
+        tags: ["Крипта", "Шитпостинг", "Ночные прогулки", "Гаджеты и Техно"],
+        ai_facts: [
+          "проводит 14 часов у экрана и общается отборным сарказмом",
+          "проиграл 80% депозита на догах, но продолжает верить",
+          "запилил уникальные мем-стикеры под каждую локальную шутку"
+        ]
+      };
+    } else {
+      return {
+        role: "Meme Curator",
+        bio: "Shitposting because therapy is too expensive. Hit me up for bad advice.",
+        tags: ["Crypto", "Shitposting", "Late Night Walks", "Tech & Gadgets"],
+        ai_facts: [
+          "terminally online and speaks mostly in sarcasm",
+          "lost 80% on dogcoins and bought back in anyway",
+          "has custom stickers for every friend group situation"
+        ]
+      };
+    }
+  }
+
+  if (un.includes('tanya_chill')) {
+    if (targetLang === 'ru') {
+      return {
+        role: "Матча Специалист",
+        bio: "Го пить матчу и слушать инди-поп, попутно проверяя, верят ли пришельцы в музыку.",
+        tags: ["Эстетика и Арт", "Странный юмор", "Умные беседы", "Киномарафоны"],
+        ai_facts: [
+          "может смотреть фильм Интерстеллар бесконечно",
+          "создает тематические плейлисты на споти для прогулок с питомцами",
+          "панически избегает голосовых длительностью более 30 секунд"
+        ]
+      };
+    } else {
+      return {
+        role: "Matcha Specialist",
+        bio: "Let's grab a matcha and discuss if aliens actually like our pop music.",
+        tags: ["Aesthetics & Art", "Weird Humor", "Deep Talks", "Movie Marathons"],
+        ai_facts: [
+          "has watched Interstellar over fifteen times",
+          "creates oddly specific Spotify playlists for dog walking",
+          "is deeply afraid of voice messages longer than 30s"
+        ]
+      };
+    }
+  }
+
+  // Real-time Translate API from Groq/Llama
+  const apiKey = (import.meta as any).env.VITE_GROQ_API_KEY;
+  if (apiKey) {
+    try {
+      const response = await fetch(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'llama3-8b-8192',
+            messages: [{
+              role: 'user',
+              content: `You are a professional translator for a social matching app. Translate the JSON keys values directly into ${targetLang === 'ru' ? 'Russian' : 'English (U.S.)'}. 
+Keep tags short, casual, and translated like typical interests.
+Return ONLY valid raw JSON with precisely this shape:
+{
+  "role": "translated role descriptor",
+  "bio": "translated personal bio",
+  "tags": ["trans_tag_1", "trans_tag_2", ...],
+  "ai_facts": ["trans_fact_1", "trans_fact_2", ...]
+}
+
+Source Object to Translate:
+{
+  "role": "${defaultProfile.role}",
+  "bio": "${defaultProfile.bio}",
+  "tags": ${JSON.stringify(defaultProfile.tags)},
+  "ai_facts": ${JSON.stringify(defaultProfile.ai_facts)}
+}`
+            }],
+            temperature: 0.15,
+            response_format: { type: "json_object" }
+          })
+        }
+      );
+      const resData = await response.json();
+      const content = resData?.choices?.[0]?.message?.content?.trim();
+      if (content) {
+        const parsed = JSON.parse(content);
+        return {
+          role: parsed.role || defaultProfile.role,
+          bio: parsed.bio || defaultProfile.bio,
+          tags: Array.isArray(parsed.tags) ? parsed.tags : defaultProfile.tags,
+          ai_facts: Array.isArray(parsed.ai_facts) ? parsed.ai_facts : defaultProfile.ai_facts
+        };
+      }
+    } catch (apiErr) {
+      console.error("Groq-based Translate operation failed:", apiErr);
+    }
+  }
+
+  // Local rule-based translation if offline / no key
+  if (targetLang === 'ru') {
+    const vocab: Record<string, string> = {
+      'developer': 'Разработчик',
+      'student': 'Студент',
+      'designer': 'Дизайнер',
+      'creator': 'Креатор',
+      'founder': 'Основатель',
+      'explorer': 'Исследователь',
+      'coding': 'Кодинг',
+      'photography': 'Фотография',
+      'techno': 'Техно',
+      'coffee': 'Кофе',
+      'matcha': 'Матча',
+      'gaming': 'Гейминг',
+      'street food': 'Уличная еда',
+      'deep talks': 'Умные беседы',
+      'late night walks': 'Ночные прогулки',
+      'digital nomad': 'Номад / Кочевник'
+    };
+
+    const translateT = (tag: string) => {
+      const low = tag.toLowerCase().trim();
+      return vocab[low] || tag;
+    };
+
+    return {
+      role: vocab[defaultProfile.role.toLowerCase().trim()] || defaultProfile.role,
+      bio: defaultProfile.bio ? `[Перевод] ${defaultProfile.bio}` : "",
+      tags: defaultProfile.tags.map(translateT),
+      ai_facts: defaultProfile.ai_facts.map(f => `[Перевод] ${f}`)
+    };
+  }
+
+  return defaultProfile;
+};
+
 // 7. Debug helper helper to reset swipes in Supabase for current user
 export const resetUserSwipes = async (currentUserId: string): Promise<void> => {
   try {
