@@ -1,0 +1,6 @@
+{
+  "name": "Matcha",
+  "description": "AI-powered networking and social discovery for internet people in Telegram.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

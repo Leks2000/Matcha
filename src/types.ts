@@ -1,0 +1,42 @@
+export interface UserProfile {
+  id: string;
+  telegram_id: string;
+  username: string;
+  name: string;
+  age: number;
+  role: string;
+  tags: string[];
+  created_at: string;
+  vibeScore?: number;
+  ai_facts?: string[];
+}
+
+export interface MatchRecord {
+  user_a: string;
+  user_b: string;
+  a_liked: boolean;
+  b_liked: boolean;
+  matched_at: string;
+}
+
+export interface CurrentUser {
+  id: string;
+  telegram_id: string;
+  username: string;
+  name: string;
+  age: number;
+  role: string;
+  tags: string[];
+  created_at: string;
+  streakDays: number;
+  matchesToday: number;
+  isPremium: boolean;
+  priorityPoints?: number; // growth priority boost points
+  ai_facts?: string[];
+}
+
+export interface SwipeAction {
+  targetId: string;
+  direction: 'left' | 'right';
+  timestamp: string;
+}
