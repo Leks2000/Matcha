@@ -49,6 +49,7 @@ export default function DashboardView({
   const [isTranslating, setIsTranslating] = useState(false);
 
   const cardWrapperRef = useRef<HTMLDivElement>(null);
+  const lastSwipeTimeRef = useRef<number>(0);
 
   // Mouse drag scrolling state for PC / Desktop ease of use
   const filterScrollRef = useRef<HTMLDivElement>(null);
@@ -449,31 +450,63 @@ export default function DashboardView({
     };
   }, [currentIndex, activeProfile, filteredProfiles, currentUser]);
 
-  // Support wheel-based horizontal trackpad gestures to swipe left/right on active profile card
+  // Support mouse wheel vertical/horizontal gestures to swipe left/right on active profile card
   useEffect(() => {
     const el = cardWrapperRef.current;
     if (!el) return;
     
     let cumulativeDeltaX = 0;
+    let cumulativeDeltaY = 0;
     let debounceTimer: any = null;
 
     const handleCardWheel = (e: WheelEvent) => {
-      // Only trigger horizontal swipe when scroll is noticeably horizontal
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      const now = Date.now();
+      if (now - lastSwipeTimeRef.current < 850) {
+        // Cooldown filter: prevent scrolling into multiple items immediately
         e.preventDefault();
-        cumulativeDeltaX += e.deltaX;
-        
+        return;
+      }
+
+      // Horizontal swipe (Trackpad or fancy mouse)
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        if (Math.abs(e.deltaX) > 4) {
+          e.preventDefault();
+          cumulativeDeltaX += e.deltaX;
+
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            cumulativeDeltaX = 0;
+          }, 200);
+
+          if (cumulativeDeltaX > 100) {
+            lastSwipeTimeRef.current = Date.now();
+            executeSwipeWithHaptics('right'); // Swipe Right (Like)
+            cumulativeDeltaX = 0;
+          } else if (cumulativeDeltaX < -100) {
+            lastSwipeTimeRef.current = Date.now();
+            executeSwipeWithHaptics('left'); // Swipe Left (Pass)
+            cumulativeDeltaX = 0;
+          }
+        }
+      } 
+      // Vertical swipe adaptor for PC (standard mouse wheel / trackpads scroll)
+      else if (Math.abs(e.deltaY) > 5) {
+        e.preventDefault();
+        cumulativeDeltaY += e.deltaY;
+
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-          cumulativeDeltaX = 0;
+          cumulativeDeltaY = 0;
         }, 200);
 
-        if (cumulativeDeltaX > 120) {
-          executeSwipeWithHaptics('right'); // swipe right for positive horizontal scroll
-          cumulativeDeltaX = 0;
-        } else if (cumulativeDeltaX < -120) {
-          executeSwipeWithHaptics('left'); // swipe left for negative horizontal scroll
-          cumulativeDeltaX = 0;
+        if (cumulativeDeltaY > 80) {
+          lastSwipeTimeRef.current = Date.now();
+          executeSwipeWithHaptics('right'); // Scroll Down -> LIKE ⚡
+          cumulativeDeltaY = 0;
+        } else if (cumulativeDeltaY < -80) {
+          lastSwipeTimeRef.current = Date.now();
+          executeSwipeWithHaptics('left'); // Scroll Up -> PASS ❌
+          cumulativeDeltaY = 0;
         }
       }
     };
@@ -792,13 +825,13 @@ export default function DashboardView({
               const nextProfile = filteredProfiles[currentIndex + 1];
 
               return (
-                <div className="relative w-full h-[500px] sm:h-[520px] max-w-[360px] flex items-center justify-center">
+                <div className="relative w-full h-[450px] md:h-[465px] lg:h-[510px] max-w-[350px] flex items-center justify-center transition-all duration-300">
                   
                   {/* NEXT PROFILE (Background Card - Static, pointer-events-none, z-10) */}
                   {nextProfile && (
                     <div
                       key={nextProfile.id}
-                      className="absolute w-full h-full rounded-[32px] bg-gradient-to-br from-[#E2EFE6] to-[#CBE5D6] border border-black/[0.04] shadow-xs flex flex-col justify-between overflow-hidden scale-95 translate-y-3.5 opacity-60 pointer-events-none z-10"
+                      className="absolute w-full h-full rounded-[32px] bg-gradient-to-br from-[#E2EFE6] to-[#CBE5D6] border border-black/[0.04] shadow-xs flex flex-col justify-between overflow-hidden scale-95 translate-y-3.5 opacity-60 pointer-events-none z-10 animate-pulse"
                     >
                       <div className="w-full h-full flex flex-col justify-between pointer-events-none select-none">
                         <div className="relative h-[38%] flex flex-col justify-end items-center pb-2">
@@ -812,7 +845,7 @@ export default function DashboardView({
                         </div>
 
                         <div className="px-5 text-center flex flex-col justify-center pb-1">
-                          <h2 className="text-[26px] font-extrabold tracking-tight text-[#1A1A1A] leading-tight">
+                          <h2 className="text-[26px] font-extrabold tracking-tight text-[#1A1A1A] leading-tight flex items-center justify-center">
                             <span>{nextProfile.name}</span>
                             <span className="text-[#1A1A1A]/40 font-medium ml-1.5">/{nextProfile.age || 22}</span>
                           </h2>
@@ -822,7 +855,7 @@ export default function DashboardView({
                         </div>
 
                         <div className="px-3 pb-3 shrink-0">
-                          <div className="bg-white/80 rounded-[24px] p-3.5 flex flex-col h-[235px] justify-between shadow-xs border border-transparent" />
+                          <div className="bg-white/80 rounded-[24px] p-3 flex flex-col h-[190px] md:h-[205px] lg:h-[230px] justify-between shadow-xs border border-transparent" />
                         </div>
                       </div>
                     </div>
@@ -939,7 +972,7 @@ export default function DashboardView({
 
                         {/* WHITE BOTTOM EXPANSION HOOD */}
                         <div className="px-3 pb-3 shrink-0">
-                          <div className="bg-white rounded-[24px] p-3.5 flex flex-col h-[235px] justify-between shadow-[0_2px_12px_rgba(0,0,0,0.01)] border border-black/[0.01]">
+                          <div className="bg-white rounded-[24px] p-3 flex flex-col h-[190px] md:h-[205px] lg:h-[230px] justify-between shadow-[0_2px_12px_rgba(0,0,0,0.01)] border border-black/[0.01]">
                             
                             {/* Card Tab Selectors */}
                             <div className="flex items-center justify-between border-b border-black/[0.04] pb-1.5 mb-1 pointer-events-auto">

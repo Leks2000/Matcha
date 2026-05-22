@@ -671,6 +671,15 @@ export default function App() {
       streakDays={currentUser.streakDays}
       isPremium={currentUser.isPremium}
       matchaSparks={currentUser.matcha_sparks ?? 15}
+      activeTab={mobileTab}
+      onTabChange={(tab) => {
+        setMobileTab(tab);
+      }}
+      currentUser={currentUser}
+      onInviteAndRefer={handleInviteAndRefer}
+      onLanguageToggle={toggleAppLanguage}
+      appLanguage={appLanguage}
+      t={t}
     >
       {!hasOnboarded ? (
         <OnboardingView 
