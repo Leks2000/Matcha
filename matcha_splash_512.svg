@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <!-- 
+    Matcha Bot Official splash screen for Telegram Mini Apps (BotFather compliant).
+    Canvas size: 512x512.
+    Contains exactly one single unified <path> to pass BotFather's strict SVG validation.
+  -->
+  <path 
+    d="M 120 400 C 110 400 110 415 120 415 L 392 415 C 402 415 402 400 392 400 Z M 160 210 L 352 210 C 352 285 330 365 256 365 C 182 365 160 285 160 210 Z M 352 245 C 385 245 400 280 352 295 Z M 216 170 C 210 145 220 135 226 110 C 228 100 216 100 216 110 C 210 135 200 145 206 170 Z M 262 170 C 255 135 270 125 276 90 C 278 80 266 80 266 95 C 260 120 250 135 252 170 Z M 304 170 C 298 148 308 138 314 115 C 316 105 304 105 304 115 C 298 138 288 148 294 170 Z" 
+    fill="#00C896" 
+  />
+</svg>

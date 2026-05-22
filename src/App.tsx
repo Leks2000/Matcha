@@ -51,6 +51,78 @@ export default function App() {
   const [profileUploadLoading, setProfileUploadLoading] = useState(false);
   const [profileDragActive, setProfileDragActive] = useState(false);
 
+  // Audio-визитка (Voice Bio) States & Helpers
+  const [localVoiceBio, setLocalVoiceBio] = useState<string>("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [recSeconds, setRecSeconds] = useState(0);
+
+  const startVoiceRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      const chunks: Blob[] = [];
+      
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          setLocalVoiceBio(base64data);
+        };
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+      setRecSeconds(0);
+
+      const interval = setInterval(() => {
+        setRecSeconds(prev => {
+          if (prev >= 4) {
+            clearInterval(interval);
+            recorder.stop();
+            setIsRecording(false);
+            return 5;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+
+      (recorder as any).timerInterval = interval;
+      try { WebApp.HapticFeedback.impactOccurred('medium'); } catch(e){}
+    } catch (err) {
+      console.error("Unable to start record microphone:", err);
+      // Fallback/Warning for nested frames which don't support mic permissions
+      const isIframe = window.self !== window.top;
+      if (isIframe) {
+        alert("Запись аудио заблокирована в превью-фрейме браузера AI Studio. Пожалуйста, откройте приложение в новой вкладке (кнопка в правом верхнем углу!), чтобы разрешить доступ к микрофону и записать свою визитку!");
+      } else {
+        alert("Не удалось получить доступ к микрофону. Пожалуйста, проверьте разрешения.");
+      }
+    }
+  };
+
+  const stopVoiceRecording = () => {
+    if (mediaRecorder && isRecording) {
+      clearInterval((mediaRecorder as any).timerInterval);
+      mediaRecorder.stop();
+      setIsRecording(false);
+      try { WebApp.HapticFeedback.impactOccurred('light'); } catch(e){}
+    }
+  };
+
+  const deleteVoiceBio = () => {
+    setLocalVoiceBio("");
+    try { WebApp.HapticFeedback.notificationOccurred('warning'); } catch(e){}
+  };
+
   const handleProfileFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -131,7 +203,9 @@ export default function App() {
           priorityPoints: 0,
           age: user.age || 22,
           bio: user.bio || "Exploring matcha vibes and meeting cool young creators.",
-          photo_url: user.photo_url || tgPhotoUrl || ""
+          photo_url: user.photo_url || tgPhotoUrl || "",
+          matcha_sparks: user.matcha_sparks ?? 15,
+          voice_bio: user.voice_bio || ""
         };
         setCurrentUser(loadedUser);
         setProfileName(loadedUser.name);
@@ -139,6 +213,7 @@ export default function App() {
         setProfileBio(loadedUser.bio || "");
         setProfilePhotoUrl(loadedUser.photo_url || "");
         setProfileFacts(loadedUser.ai_facts || []);
+        setLocalVoiceBio(loadedUser.voice_bio || "");
         setHasOnboarded(true);
       } else {
         // Build dynamic empty/starter user structure so onboarding works properly
@@ -156,7 +231,9 @@ export default function App() {
           priorityPoints: 0,
           age: 22,
           bio: "Exploring matcha vibes and meeting cool young creators.",
-          photo_url: tgPhotoUrl || ""
+          photo_url: tgPhotoUrl || "",
+          matcha_sparks: 15,
+          voice_bio: ""
         };
         setCurrentUser(starterUser);
         setProfileName(starterUser.name);
@@ -224,11 +301,12 @@ export default function App() {
       console.error("Clipboard copy failed:", err);
     }
 
-    // Direct client simulation of awarding dynamic invite boosts points
-    setInviteFeedback("+5 Priority Boost Activated!");
+    // Direct client simulation of awarding dynamic invite boosts points & Matcha Sparks
+    setInviteFeedback("+10 Sparks & +5 Priority Boost Activated!");
     setCurrentUser(prev => prev ? {
       ...prev,
-      priorityPoints: (prev.priorityPoints || 0) + 5
+      priorityPoints: (prev.priorityPoints || 0) + 5,
+      matcha_sparks: (prev.matcha_sparks ?? 15) + 10
     } : null);
     setTimeout(() => setInviteFeedback(""), 3000);
   };
@@ -246,7 +324,8 @@ export default function App() {
         tags: currentUser.tags,
         ai_facts: profileFacts,
         bio: profileBio,
-        photo_url: profilePhotoUrl
+        photo_url: profilePhotoUrl,
+        voice_bio: localVoiceBio
       });
       if (updatedUser) {
         setCurrentUser({
@@ -255,7 +334,8 @@ export default function App() {
           age: profileAge,
           ai_facts: profileFacts,
           bio: profileBio,
-          photo_url: profilePhotoUrl
+          photo_url: profilePhotoUrl,
+          voice_bio: localVoiceBio
         });
         setSaveStatus("Profile Saved!");
         try { WebApp.HapticFeedback.notificationOccurred('success'); } catch(e){}
@@ -323,6 +403,7 @@ export default function App() {
     <TelegramFrame
       streakDays={currentUser.streakDays}
       isPremium={currentUser.isPremium}
+      matchaSparks={currentUser.matcha_sparks ?? 15}
     >
       {!hasOnboarded ? (
         <OnboardingView 
@@ -334,7 +415,7 @@ export default function App() {
         <div className="flex-1 flex flex-col justify-between h-full bg-[#F5F5F0] overflow-hidden relative" id="mobile-applet-mount">
           
           {/* Main Content Pane */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col h-full scrollbar-none select-none">
+          <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col h-full scrollbar-thin">
             <AnimatePresence mode="wait">
               
               {/* SWIPE MAIN SCREEN */}
@@ -449,60 +530,67 @@ export default function App() {
                       />
                     </div>
 
-                    {/* Drag and drop profile view photo selector */}
-                    <div className="space-y-1">
-                      <label className="block text-[9.5px] font-bold text-[#6B7280] uppercase tracking-wider">
-                        Avatar Profile Picture
-                      </label>
-                      
-                      <div 
-                        onDragEnter={handleProfileDrag}
-                        onDragOver={handleProfileDrag}
-                        onDragLeave={handleProfileDrag}
-                        onDrop={handleProfileDrop}
-                        className={`relative rounded-2xl border border-dashed p-3 text-center flex items-center justify-center gap-2 cursor-pointer transition select-none ${
-                          profileDragActive 
-                            ? "border-[#00C896] bg-[#E8F5EE]/40" 
-                            : "border-black/[0.1] hover:border-[#00C896]/50 bg-[#F5F5F0]"
-                        }`}
-                      >
-                        <input 
-                          type="file" 
-                          accept="image/*"
-                          onChange={handleProfileFileChange}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                        />
-                        
-                        <div className="flex items-center gap-3 select-none pointer-events-none">
-                          <div className="w-10 h-10 rounded-full bg-white border border-black/[0.04] flex items-center justify-center overflow-hidden shrink-0">
-                            {profileUploadLoading ? (
-                              <div className="w-4 h-4 rounded-full border-2 border-[#00C896] border-t-transparent animate-spin" />
-                            ) : profilePhotoUrl ? (
-                              <img src={profilePhotoUrl} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                            ) : (
-                              <Camera className="w-4 h-4 text-[#1A7A55]" />
-                            )}
-                          </div>
-                          <div className="text-left leading-tight">
-                            <span className="text-[11.5px] font-bold text-[#1A1A1A] flex items-center gap-1">
-                              <Upload className="w-3 h-3 text-[#00C896]" />
-                              Choose physical file (Картинка с диска/папки)
-                            </span>
-                            <span className="text-[9px] text-[#6B7280] font-medium block">
-                              Auto quality-preserving compression activated
-                            </span>
-                          </div>
-                        </div>
+                    {/* Audio-визитка (Voice Bio) Section */}
+                    <div className="space-y-2 border-t border-black/[0.04] pt-3" id="voice-bio-panel">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-[10px] font-black text-[#6B7280] uppercase tracking-wider flex items-center gap-1.5">
+                          <span>🎙️ Voice Greeting (Голосовой Вайб)</span>
+                          {localVoiceBio && (
+                            <span className="text-[9px] text-[#00C896] bg-[#00C896]/10 px-1.5 py-0.5 rounded-full uppercase font-bold">Active</span>
+                          )}
+                        </label>
                       </div>
 
-                      {/* Or write custom absolute web url optionally */}
-                      <input
-                        type="text"
-                        value={profilePhotoUrl}
-                        onChange={(e) => setProfilePhotoUrl(e.target.value)}
-                        className="w-full h-[36px] px-3 bg-[#F5F5F0] border border-black/[0.04] rounded-xl text-[10px] font-mono text-[#1A1A1A] focus:outline-none focus:border-[#00C896]"
-                        placeholder="Or customize direct URL..."
-                      />
+                      <div className="bg-[#F5F5F0] p-3 rounded-2xl flex items-center justify-between gap-3 border border-black/[0.03]">
+                        {isRecording ? (
+                          <div className="flex items-center gap-2.5 animate-pulse text-[#FF3B30] font-black text-[12px]">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                            </span>
+                            <span>Запись: 0:0{recSeconds} / 0:05</span>
+                          </div>
+                        ) : localVoiceBio ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                const audio = new Audio(localVoiceBio);
+                                audio.play();
+                              }}
+                              className="h-[32px] px-3 rounded-lg bg-[#00C896]/15 hover:bg-[#00C896]/25 text-[#1A7A55] font-extrabold text-[11px] uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer"
+                            >
+                              ▶️ Play Voice Bio
+                            </button>
+                            <button
+                              onClick={deleteVoiceBio}
+                              className="h-[32px] w-[32px] rounded-lg bg-red-100/80 hover:bg-red-200/80 text-red-600 transition flex items-center justify-center text-xs cursor-pointer"
+                              title="Delete voice entry"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-[#6B7280] font-bold">Нет аудиозаписи. Запишите 5 сек голоса!</span>
+                        )}
+
+                        <div>
+                          {isRecording ? (
+                            <button
+                              onClick={stopVoiceRecording}
+                              className="h-[32px] px-3 rounded-lg bg-red-500 text-white font-extrabold text-[10px] uppercase tracking-wider hover:opacity-95 transition cursor-pointer"
+                            >
+                              Stop ⏹️
+                            </button>
+                          ) : (
+                            <button
+                              onClick={startVoiceRecording}
+                              className="h-[32px] px-3 rounded-lg bg-black text-[#00C896] font-extrabold text-[10px] uppercase tracking-wider hover:opacity-90 transition flex items-center gap-1 cursor-pointer"
+                            >
+                              Record 🔴
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
                     <button
@@ -752,13 +840,15 @@ export default function App() {
             ].map((tab) => {
               const isActive = mobileTab === tab.id;
               return (
-                <button
+                <motion.button
                   key={tab.id}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.92 }}
                   onClick={() => {
                     try { WebApp.HapticFeedback.impactOccurred('light'); } catch (e) {}
                     setMobileTab(tab.id as any);
                   }}
-                  className="relative flex flex-col items-center justify-center flex-1 h-full py-1 cursor-pointer"
+                  className="relative flex flex-col items-center justify-center flex-1 h-full py-1 cursor-pointer select-none"
                   id={`mobile-tab-${tab.id}`}
                 >
                   <div className="relative flex items-center justify-center mt-1">
@@ -777,7 +867,7 @@ export default function App() {
                       className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-[#00C896]"
                     />
                   )}
-                </button>
+                </motion.button>
               );
             })}
           </nav>

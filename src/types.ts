@@ -11,6 +11,8 @@ export interface UserProfile {
   ai_facts?: string[];
   bio?: string;
   photo_url?: string;
+  matcha_sparks?: number;
+  voice_bio?: string; // base64 encoded audio or data-url
 }
 
 export interface MatchRecord {
@@ -37,6 +39,8 @@ export interface CurrentUser {
   ai_facts?: string[];
   bio?: string;
   photo_url?: string;
+  matcha_sparks?: number;
+  voice_bio?: string; // base64 encoded audio or data-url
 }
 
 export interface SwipeAction {

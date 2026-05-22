@@ -262,7 +262,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
   };
 
   return (
-    <div className="flex-grow w-full max-w-sm mx-auto flex flex-col justify-between px-5 py-6 select-none bg-[#F5F5F0]" id="onboarding-root">
+    <div className="flex-grow w-full max-w-sm mx-auto flex flex-col justify-between px-5 py-6 bg-[#F5F5F0] overflow-y-auto scrollbar-thin h-full" id="onboarding-root">
       
       <AnimatePresence mode="wait">
         {step === 1 && (
@@ -283,15 +283,32 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                   </span>
                 </div>
                 
-                {/* AI Toggle link Button */}
-                <button
-                  type="button"
-                  onClick={() => setIsAiMode(!isAiMode)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1A1A1A] hover:bg-zinc-800 text-[#00C896] text-[10px] font-bold uppercase tracking-wider cursor-pointer transition active:scale-95 shadow-sm"
-                >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  <span>{isAiMode ? "Manual Forms" : "⚡ AI Auto-Fill"}</span>
-                </button>
+                {/* AI Toggle Link Segmented Switch */}
+                <div className="bg-black/[0.04] p-0.5 rounded-full flex items-center select-none" id="ai-toggle-segmented">
+                  <button
+                    type="button"
+                    onClick={() => setIsAiMode(false)}
+                    className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-1 cursor-pointer select-none ${
+                      !isAiMode 
+                        ? 'bg-white text-[#1A7A55] shadow-xs' 
+                        : 'text-[#6B7280] hover:text-[#1A1A1A]'
+                    }`}
+                  >
+                    <span>📝 MANUAL</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAiMode(true)}
+                    className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5 cursor-pointer select-none ${
+                      isAiMode 
+                        ? 'bg-[#00c89c]/20 text-[#0f553a] border border-[#00c89c]/40 shadow-xs' 
+                        : 'text-[#6B7280] hover:text-[#1A1A1A]'
+                    }`}
+                  >
+                    <Zap className={`w-3 h-3 ${isAiMode ? 'fill-[#0f553a] animate-pulse' : ''}`} />
+                    <span>AI AUTO-FILL</span>
+                  </button>
+                </div>
               </div>
 
               {isAiMode ? (

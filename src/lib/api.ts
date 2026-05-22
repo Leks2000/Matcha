@@ -14,7 +14,63 @@ export interface SupabaseUser {
   age?: number;
   bio?: string;
   photo_url?: string;
+  matcha_sparks?: number;
+  voice_bio?: string;
 }
+
+// LocalStorage Fallback database helpers
+const getLocalUsers = (): SupabaseUser[] => {
+  const data = localStorage.getItem('matcha_local_users');
+  if (!data) {
+    const list = SEED_PROFILES.map((p) => ({
+      id: `seeded_${p.telegram_id}`,
+      ...p,
+      matcha_sparks: 15,
+      voice_bio: undefined
+    }));
+    localStorage.setItem('matcha_local_users', JSON.stringify(list));
+    return list;
+  }
+  return JSON.parse(data);
+};
+
+const saveLocalUsers = (users: any[]) => {
+  localStorage.setItem('matcha_local_users', JSON.stringify(users));
+};
+
+const getLocalSwipes = (): { swiper_id: string; swiped_id: string; direction: string }[] => {
+  const data = localStorage.getItem('matcha_local_swipes');
+  return data ? JSON.parse(data) : [];
+};
+
+const saveLocalSwipes = (swipes: any[]) => {
+  localStorage.setItem('matcha_local_swipes', JSON.stringify(swipes));
+};
+
+// Telegram Bot real push notifications helper 
+export const triggerTelegramBotNotification = async (chatId: string | number, text: string) => {
+  const token = (import.meta as any).env.VITE_TELEGRAM_BOT_TOKEN || 'your_fallback_token_here';
+  if (!token || token.includes('your_fallback')) {
+    console.warn("TELEGRAM_BOT_TOKEN / VITE_TELEGRAM_BOT_TOKEN not configured in settings. Simulating Telegram push notification alert locally.");
+    return false;
+  }
+  try {
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: Number(chatId),
+        text: text,
+        parse_mode: 'HTML'
+      })
+    });
+    return response.ok;
+  } catch (err) {
+    console.error("Failed to trigger live telegram bot push:", err);
+    return false;
+  }
+};
 
 // 1. Get current user by telegram_id
 export const getCurrentUser = async (telegramId: number): Promise<SupabaseUser | null> => {
@@ -26,12 +82,15 @@ export const getCurrentUser = async (telegramId: number): Promise<SupabaseUser |
       .maybeSingle();
     
     if (error) {
-      console.error("Error fetching current user:", error);
-      return null;
+      console.error("Error fetching current user from Supabase:", error);
+      throw error;
     }
     return data;
   } catch (err) {
-    console.error("Error in getCurrentUser:", err);
+    console.warn("Supabase load failed. Falling back to high-fidelity LocalStorage schema database...", err);
+    const localUsers = getLocalUsers();
+    const found = localUsers.find(u => Number(u.telegram_id) === Number(telegramId));
+    if (found) return found;
     return null;
   }
 };
@@ -47,6 +106,8 @@ export const onboardUser = async (userData: {
   ai_facts: string[];
   bio?: string;
   photo_url?: string;
+  matcha_sparks?: number;
+  voice_bio?: string;
 }): Promise<SupabaseUser | null> => {
   const refCode = `REF_${userData.telegram_id}`;
   try {
@@ -57,13 +118,38 @@ export const onboardUser = async (userData: {
       .single();
 
     if (error) {
-      console.error("Error onboarding user:", error);
-      return null;
+      console.error("Error onboarding user in Supabase:", error);
+      throw error;
     }
     return data;
   } catch (err) {
-    console.error("Error in onboardUser:", err);
-    return null;
+    console.warn("Supabase save failed. Storing in LocalStorage fallback DB...", err);
+    const localUsers = getLocalUsers();
+    const existingIdx = localUsers.findIndex(u => Number(u.telegram_id) === Number(userData.telegram_id));
+    
+    const localUser: SupabaseUser = {
+      id: existingIdx >= 0 ? localUsers[existingIdx].id : `user_${userData.telegram_id}`,
+      telegram_id: userData.telegram_id,
+      username: userData.username,
+      name: userData.name,
+      age: userData.age,
+      role: userData.role,
+      tags: userData.tags,
+      ai_facts: userData.ai_facts,
+      bio: userData.bio || "",
+      photo_url: userData.photo_url || "",
+      ref_code: refCode,
+      matcha_sparks: userData.matcha_sparks ?? (existingIdx >= 0 ? (localUsers[existingIdx].matcha_sparks ?? 15) : 15),
+      voice_bio: userData.voice_bio ?? (existingIdx >= 0 ? localUsers[existingIdx].voice_bio : undefined),
+    };
+
+    if (existingIdx >= 0) {
+      localUsers[existingIdx] = localUser;
+    } else {
+      localUsers.push(localUser);
+    }
+    saveLocalUsers(localUsers);
+    return localUser;
   }
 };
 
@@ -177,7 +263,9 @@ export const getProfiles = async (
 ): Promise<SupabaseUser[]> => {
   try {
     // Attempt auto-seed if needed
-    await checkAndSeedProfiles(currentUserId);
+    try {
+      await checkAndSeedProfiles(currentUserId);
+    } catch(e) {}
 
     // Get swiped user IDs
     const { data: swiped, error: swipeError } = await supabase
@@ -186,7 +274,7 @@ export const getProfiles = async (
       .eq('swiper_id', currentUserId);
 
     if (swipeError) {
-      console.error("Error fetching swipes:", swipeError);
+      throw swipeError;
     }
 
     const swipedIds = swiped?.map(s => s.swiped_id) || [];
@@ -205,8 +293,7 @@ export const getProfiles = async (
 
     const { data: users, error: usersError } = await query;
     if (usersError || !users) {
-      console.error("Error fetching matchable users:", usersError);
-      return [];
+      throw usersError || new Error("No users found");
     }
 
     // Client-side scoring for exact intersection and sorting (as requested by the algorithm)
@@ -229,8 +316,30 @@ export const getProfiles = async (
 
     return scored.map(item => item.user);
   } catch (err) {
-    console.error("Error in getProfiles:", err);
-    return [];
+    console.warn("getProfiles Supabase error caught. Loading LocalStorage candidate deck fallback...", err);
+    const localUsers = getLocalUsers();
+    const localSwipes = getLocalSwipes();
+
+    const swipedTargetIds = localSwipes
+      .filter(s => s.swiper_id === currentUserId)
+      .map(s => s.swiped_id);
+
+    // Filter out self and swiped candidates
+    const matchables = localUsers.filter(u => u.id !== currentUserId && !swipedTargetIds.includes(u.id));
+
+    // Score based on tag overlaps
+    const scored = matchables.map(user => {
+      const userTagsNorm = (user.tags || []).map(t => t.toLowerCase().trim());
+      const currentTagsNorm = currentTags.map(t => t.toLowerCase().trim());
+      const intersection = userTagsNorm.filter(t => currentTagsNorm.includes(t));
+      return {
+        user,
+        score: intersection.length
+      };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored.map(item => item.user);
   }
 };
 
@@ -248,8 +357,7 @@ export const recordSwipe = async (
     });
 
     if (error) {
-      console.error("Error inserting swipe:", error);
-      return { match: false };
+      throw error;
     }
 
     if (direction === 'like') {
@@ -262,9 +370,7 @@ export const recordSwipe = async (
         .eq('direction', 'like')
         .maybeSingle();
 
-      if (checkError) {
-        console.error("Error checking mutual swipe:", checkError);
-      }
+      if (checkError) throw checkError;
 
       if (mutual) {
         // Create match entry
@@ -273,16 +379,18 @@ export const recordSwipe = async (
           user_b: swipedId
         });
 
-        // Trigger Edge Function for notifications
+        // Trigger Telegram live notifications
         try {
-          await supabase.functions.invoke('notify-match', {
-            body: {
-              userAId: swiperId,
-              userBId: swipedId
-            }
-          });
-        } catch (efErr) {
-          console.error("Edge function trigger caught:", efErr);
+          const { data: userA } = await supabase.from('users').select('telegram_id, name').eq('id', swiperId).maybeSingle();
+          const { data: userB } = await supabase.from('users').select('telegram_id, name').eq('id', swipedId).maybeSingle();
+          if (userA && userB) {
+            const msgA = `🔔 <b>Matcha Vibe Alert!</b>\n\nВы только что совпали по вайб-радару с пользователем <b>${userB.name}</b>! Скорее заходи поболтать.`;
+            const msgB = `🔔 <b>Matcha Vibe Alert!</b>\n\nВы только что совпали по вайб-радару с пользователем <b>${userA.name}</b>! Скорее заходи поболтать.`;
+            await triggerTelegramBotNotification(userA.telegram_id, msgA);
+            await triggerTelegramBotNotification(userB.telegram_id, msgB);
+          }
+        } catch (botErr) {
+          console.error("Live notification alerts trigger erred:", botErr);
         }
 
         return { match: true };
@@ -291,7 +399,28 @@ export const recordSwipe = async (
 
     return { match: false };
   } catch (err) {
-    console.error("Error in recordSwipe:", err);
+    console.warn("recordSwipe Supabase write failed. Running LocalStorage fallback transaction...", err);
+    const localSwipes = getLocalSwipes();
+    localSwipes.push({ swiper_id: swiperId, swiped_id: swipedId, direction });
+    saveLocalSwipes(localSwipes);
+
+    if (direction === 'like') {
+      const mutual = localSwipes.find(s => s.swiper_id === swipedId && s.swiped_id === swiperId && s.direction === 'like');
+      if (mutual) {
+        // Trigger live simulated notifications locally if telegram_id is available
+        const localUsers = getLocalUsers();
+        const userA = localUsers.find(u => u.id === swiperId);
+        const userB = localUsers.find(u => u.id === swipedId);
+        if (userA && userB) {
+          const msgA = `🔔 <b>Matcha Vibe Alert!</b>\n\nВы совпали по вайб-радару с <b>${userB.name}</b>! Пообщайтесь в Telegram прямо сейчас.`;
+          const msgB = `🔔 <b>Matcha Vibe Alert!</b>\n\nВы совпали по вайб-радару с <b>${userA.name}</b>! Пообщайтесь в Telegram прямо сейчас.`;
+          await triggerTelegramBotNotification(userA.telegram_id, msgA);
+          await triggerTelegramBotNotification(userB.telegram_id, msgB);
+        }
+        return { match: true };
+      }
+    }
+
     return { match: false };
   }
 };
