@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/re
 import { Sparkles, Heart, X, MessageSquare } from 'lucide-react';
 import { UserProfile, CurrentUser } from '../types';
 import WebApp from '@twa-dev/sdk';
+import { getProfiles, getVibeReason, recordSwipe } from '../lib/api';
 
 interface DashboardViewProps {
   currentUser: CurrentUser;
@@ -35,8 +36,7 @@ export default function DashboardView({
   // Fetch matchable cards
   const fetchDeck = async () => {
     try {
-      const resDeck = await fetch('/api/profiles');
-      const dataDeck = await resDeck.json();
+      const dataDeck = await getProfiles(currentUser.id, currentUser.tags);
       setProfiles(dataDeck);
     } catch (err) {
       console.error("Failed to load swipe profiles:", err);
@@ -66,18 +66,12 @@ export default function DashboardView({
       setVibeReasonText("");
       setTypewriterText("");
       try {
-        const response = await fetch('/api/match/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ targetId: activeProfile.id })
-        });
-        const data = await response.json();
+        const resultText = await getVibeReason(currentUser.tags, activeProfile.tags);
 
         if (!isSubscribed) return;
 
-        const resultText = data.vibeReason || "mutual caffeine and startup obsession is highly probable.";
-        setVibeReasonText(resultText);
-        setVibeScore(data.vibeScore || 9.1);
+        setVibeReasonText(resultText || 'mutual caffeine and startup obsession is highly probable.');
+        setVibeScore(9.1);
 
         // Run typewriter on the single humorous vibe reason sentence on the card 
         let currentLetterIdx = 0;
@@ -129,12 +123,7 @@ export default function DashboardView({
     }
 
     try {
-      const response = await fetch('/api/match/swipe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetId: activeProfile.id, direction })
-      });
-      const data = await response.json();
+      const data = await recordSwipe(currentUser.id, activeProfile.id, direction === 'right' ? 'like' : 'pass');
 
       if (direction === 'right' && data.match) {
         try {
@@ -174,10 +163,6 @@ export default function DashboardView({
 
   const handleResetDeck = async () => {
     try {
-      await fetch('/api/debug/reset', { method: 'POST' });
-      const resMe = await fetch('/api/user/me');
-      const dataMe = await resMe.json();
-      onUpdateCurrentUser(dataMe);
       setCurrentIndex(0);
       fetchDeck();
     } catch (err) {

@@ -19,6 +19,7 @@ import {
   Check
 } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
+import { getCurrentUser } from './lib/api';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -43,18 +44,22 @@ export default function App() {
     }
   }, []);
 
-  const fetchCurrentUserAndConfig = async () => {
-    try {
-      const response = await fetch('/api/user/me');
-      const data = await response.json();
-      setCurrentUser(data);
-    } catch (err) {
-      console.error("Configuration loading failed:", err);
-    }
-  };
-
   useEffect(() => {
-    fetchCurrentUserAndConfig();
+    const init = async () => {
+      try {
+        const tgUser = WebApp.initDataUnsafe?.user;
+        if (tgUser) {
+          const user = await getCurrentUser(tgUser.id);
+          if (user) {
+            setCurrentUser(user);
+            setHasOnboarded(true);
+          }
+        }
+      } catch (err) {
+        console.error('Configuration loading failed:', err);
+      }
+    };
+    init();
   }, []);
 
   const handleOnboardingComplete = (onboardedUser: CurrentUser) => {
@@ -75,8 +80,7 @@ export default function App() {
 
   const handleResetDemo = async () => {
     try {
-      await fetch('/api/debug/reset', { method: 'POST' });
-      await fetchCurrentUserAndConfig();
+      setMobileTab('discover');
       setMobileTab('discover');
       setInviteFeedback("");
       setCopiedLink(false);
@@ -99,25 +103,8 @@ export default function App() {
       console.error("Clipboard copy failed:", err);
     }
 
-    try {
-      // Simulate real user registering using referral URL: award both +5 Priority points
-      const response = await fetch('/api/user/refer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ referrerId: currentUser.id })
-      });
-      const data = await response.json();
-      if (data.success && currentUser) {
-        setInviteFeedback("+5 Priority Boost Activated!");
-        setCurrentUser({
-          ...currentUser,
-          priorityPoints: data.priorityPoints
-        });
-        setTimeout(() => setInviteFeedback(""), 3000);
-      }
-    } catch (e) {
-      console.error(e);
-    }
+    setInviteFeedback('Referral link copied. Share it in Telegram.');
+    setTimeout(() => setInviteFeedback(''), 3000);
   };
 
   if (!currentUser) {
