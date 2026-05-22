@@ -218,7 +218,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
       if (prev.includes(tagItem)) {
         return prev.filter(x => x !== tagItem);
       } else {
-        if (prev.length >= 7) return prev; // max 7
+        if (prev.length >= 6) return prev; // max 6 tags limit
         return [...prev, tagItem];
       }
     });
@@ -231,7 +231,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
     if (!customTagsPool.includes(clean)) {
       setCustomTagsPool(prev => [...prev, clean]);
     }
-    if (selectedTags.length < 7 && !selectedTags.includes(clean)) {
+    if (selectedTags.length < 6 && !selectedTags.includes(clean)) {
       setSelectedTags(prev => [...prev, clean]);
     }
     setManualTagInput("");
@@ -352,13 +352,14 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
       tags: selectedTags,
       ai_facts: aiFacts.length > 0 ? aiFacts : getInstantLocalFacts(finalRole, selectedTags, lang),
       bio: `${finalRole}. Interested in: ${selectedTags.slice(0, 3).join(', ')}.`,
-      photo_url: photoUrl,
+      photo_url: photoUrl || `https://api.dicebear.com/7.x/lorelei/svg?seed=${encodeURIComponent(name || 'MatchaUser')}`,
       streakDays: 14,
       matchesToday: 8,
       isPremium: false,
       priorityPoints: 0,
       matcha_sparks: 15,
-      voice_bio: ""
+      voice_bio: "",
+      referred_by: WebApp.initDataUnsafe?.start_param || undefined
     };
 
     onboardUser(finalUserObject).then((res) => {
@@ -759,9 +760,9 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
             <div className="space-y-2.5 pt-4">
               <button
                 onClick={handleTransitionToFacts}
-                disabled={selectedTags.length < 2 || selectedTags.length > 7}
+                disabled={selectedTags.length < 2 || selectedTags.length > 6}
                 className={`w-full h-[54px] rounded-[100px] font-extrabold uppercase tracking-wider text-xs flex items-center justify-center gap-2 transition cursor-pointer ${
-                  selectedTags.length >= 2 && selectedTags.length <= 7
+                  selectedTags.length >= 2 && selectedTags.length <= 6
                     ? 'bg-[#00C896] text-white hover:opacity-95 shadow-sm'
                     : 'bg-black/[0.04] border border-transparent text-[#9E9E9E] cursor-not-allowed'
                 }`}

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/react';
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'motion/react';
 import { Sparkles, Heart, X, MessageSquare } from 'lucide-react';
 import { UserProfile, CurrentUser } from '../types';
 import WebApp from '@twa-dev/sdk';
 import { getProfiles, recordSwipe, getVibeReason, resetUserSwipes, triggerTelegramBotNotification, translateProfile } from '../lib/api';
 import VibeRadar from './VibeRadar';
+import { GlassCard } from './GlassCard';
 
 interface DashboardViewProps {
   currentUser: CurrentUser;
@@ -12,6 +13,57 @@ interface DashboardViewProps {
   onUpdateCurrentUser: (user: CurrentUser) => void;
   appLanguage: 'en' | 'ru';
 }
+
+const TUTORIAL_PROFILES = [
+  {
+    id: "tut_1",
+    telegram_id: 11111,
+    name: "Artem",
+    age: 23,
+    role: "Vibe Matcher Creator",
+    bio: "Hey there! I'm your interactive trainer. Let's listen to my play sound context first. Tab the audio button above my name!",
+    voice_bio: "",
+    tags: ["AI Builder", "Design", "Vibe Coding"],
+    ai_facts: [
+      "Designed the entire Matcha bot UI structure from scratch.",
+      "Prefers cold matcha over double espresso anytime.",
+      "Terminal-online, extreme high focus, always building."
+    ],
+    photo_url: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=150&auto=format&fit=crop"
+  },
+  {
+    id: "tut_2",
+    telegram_id: 22222,
+    name: "Alisa",
+    age: 21,
+    role: "Web3 Designer",
+    bio: "Incredible! Now let's try direct contact. Swift me to the right or click the speech bubble chat button below to open Telegram chat.",
+    voice_bio: "",
+    tags: ["NFTs", "Framer", "Product Craft"],
+    ai_facts: [
+      "Built 20+ token-gated digital art collections.",
+      "Dreams of living in a glass cabin in Norway.",
+      "Never codes without a playlist of lo-fi beats."
+    ],
+    photo_url: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150&auto=format&fit=crop"
+  },
+  {
+    id: "tut_3",
+    telegram_id: 33333,
+    name: "Yaroslav",
+    age: 22,
+    role: "Indie Hacker",
+    bio: "Congratulations, you are fantastic! Lastly, let's learn how to send a reciprocal Like. Swipe UP or tap the ❤️ button to complete training!",
+    voice_bio: "",
+    tags: ["SaaS", "Micro-SaaS", "Tailwind Master"],
+    ai_facts: [
+      "Shipped 4 micro-services in the last 2 months.",
+      "Prefers mountain biking over any tech meetups.",
+      "Uses SpeechSynthesis to debug code structure aloud."
+    ],
+    photo_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150&auto=format&fit=crop"
+  }
+];
 
 export default function DashboardView({
   currentUser,
@@ -26,6 +78,12 @@ export default function DashboardView({
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
   const [matchedUser, setMatchedUser] = useState<any | null>(null);
   const [typewriterText, setTypewriterText] = useState("");
+
+  // Interactive Live Training/Tutorial flow - Starts automatically on first session
+  const [isTutorialActive, setIsTutorialActive] = useState(() => {
+    return localStorage.getItem('matcha_tutorial_interactive_completed_v4') !== 'true';
+  });
+  const [tutorialStep, setTutorialStep] = useState(0);
 
   // AI Supermatch states
   const [isSuperMatching, setIsSuperMatching] = useState(false);
@@ -97,6 +155,20 @@ export default function DashboardView({
 
   // Smooth slide-in toast notification state
   const [toastNotification, setToastNotification] = useState<string | null>(null);
+
+  // Interactive Tutorial Guide modal helper (Unused static pop-up bypassed, interactive training starts directly)
+  const [showTutorialModal, setShowTutorialModal] = useState(false);
+
+  // Proactive automatic tutorial help triggers
+  useEffect(() => {
+    const hasSeen = localStorage.getItem('matcha_has_seen_tutorial_v4');
+    if (!hasSeen) {
+      setIsTutorialActive(true);
+      setTutorialStep(0);
+      setCurrentIndex(0);
+      localStorage.setItem('matcha_has_seen_tutorial_v4', 'true');
+    }
+  }, []);
 
   const showToast = (message: string) => {
     setToastNotification(message);
@@ -271,18 +343,48 @@ export default function DashboardView({
     } else {
       if ('speechSynthesis' in window) {
         let text = "";
-        if (profile.telegram_id === 9991) {
-          text = "Hi, I am Elena. I am a visual creator exploring underground techno music and aesthetics. Let's grab a matcha latte!";
+        const isRussian = appLanguage === 'ru';
+        
+        if (profile.telegram_id === 11111) {
+          text = isRussian
+            ? "Привет! Я Артем, твой гид по вайбам. Отличный запуск! Теперь проведи пальцем влево или нажми на крестик, чтобы пропустить меня."
+            : "Hey! I am Artem, your vibe walkthrough guide. Excellent audio test! Now swipe me left or click the cross button below to skip.";
+        } else if (profile.telegram_id === 22222) {
+          text = isRussian
+            ? "Привет, я Алиса! Замечательно. Теперь попробуй свайпнуть меня вправо или нажать на иконку чата для быстрого контакта."
+            : "Hey, I'm Alisa! Brilliant. Now let's try direct contact. Swipe me to the right or click the speech bubble chat button below.";
+        } else if (profile.telegram_id === 33333) {
+          text = isRussian
+            ? "Привет, я Ярослав. Поздравляю! Свайпни меня вверх или нажми на сердечко, чтобы отправить когнитивный лайк."
+            : "Hi, I am Yaroslav. Congratulations! Now swipe me up or click the central heart button to send a mutual vibe like.";
+        } else if (profile.telegram_id === 9991) {
+          text = isRussian
+            ? "Привет, я Елена. Я визуальный творец, исследую андеграунд техно-музыку и эстетику. Давай выпьем по матча латте!"
+            : "Hi, I am Elena. I am a visual creator exploring underground techno music and aesthetics. Let's grab a matcha latte!";
         } else if (profile.telegram_id === 9992) {
-          text = "Hey guys, Maksim. I'm a street DJ chasing beautiful sunset beats and perfect late night street-food vibes. Check out my vinyl mix.";
-        } else if (profile.telegram_id === 9993) {
-          text = "Ola, Sofia of digital nomad life here! living out of a backpack and looking for creative spirits to explore with. Spontaneous trips are my thing.";
+          text = isRussian
+            ? "Привет народ, я Максим. Я уличный диджей, ловлю биты заката и идеальный вайб ночной уличной еды. Зацени мой виниловый микс."
+            : "Hey guys, Maksim. I'm a street DJ chasing beautiful sunset beats and perfect late night street-food vibes. Check out my vinyl mix.";
+        } else if (profile.telegram_id === 9991 || profile.telegram_id === 9993) {
+          text = isRussian
+            ? "Привет, София из жизни цифровых кочевников на связи! Живу с рюкзаком и ищу творческих людей для совместных исследований. Спонтанные поездки — моя фишка."
+            : "Ola, Sofia of digital nomad life here! living out of a backpack and looking for creative spirits to explore with. Spontaneous trips are my thing.";
         } else if (profile.telegram_id === 9994) {
-          text = "Yo. Kirill. I shitpost and curate custom stickers. Terminally online, Crypto enthusiast on extreme high speeds. Let's make some noise.";
+          text = isRussian
+            ? "Йо. Кирилл. Я занимаюсь щитпостингом и создаю кастомные стикеры. Постоянно онлайн, криптоэнтузиаст на запредельных скоростях. Давай наделаем шума!"
+            : "Yo. Kirill. I shitpost and curate custom stickers. Terminally online, Crypto enthusiast on extreme high speeds. Let's make some noise.";
         } else if (profile.telegram_id === 9995) {
-          text = "Hello, Tanya, specialist in art and movies. Let's grab a matcha and discuss if aliens actually like our pop music!";
+          text = isRussian
+            ? "Привет, Таня, эксперт в искусстве и кино. Давай выпьем матчу и обсудим, действительно ли пришельцам нравится наша поп-музыка!"
+            : "Hello, Tanya, specialist in art and movies. Let's grab a matcha and discuss if aliens actually like our pop music!";
         } else {
-          text = `Hey! I am ${profile.name}, age ${profile.age || 22}, working as a ${profile.role || 'Explorer'}. I am interested in ${(profile.tags || []).join(', ')}. Let's match vibes!`;
+          text = isRussian
+            ? `Привет! Меня зовут ${profile.name}, мне ${profile.age || 22}, я работаю как ${profile.role || 'Исследователь'}. Мои интересы: ${(profile.tags || []).join(', ')}. Давай настроимся на общую частоту!`
+            : `Hey! I am ${profile.name}, age ${profile.age || 22}, working as a ${profile.role || 'Explorer'}. I am interested in ${(profile.tags || []).join(', ')}. Let's match vibes!`;
+        }
+
+        if (isTutorialActive && tutorialStep === 0) {
+          setTutorialStep(1);
         }
 
         const utterance = new SpeechSynthesisUtterance(text);
@@ -292,15 +394,44 @@ export default function DashboardView({
         utterance.onerror = () => {
           setPlayingAudioId(null);
         };
+
         const voices = window.speechSynthesis.getVoices();
-        const engVoice = voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('natural')) ||
-                         voices.find(v => v.lang.startsWith('en')) ||
-                         voices[0];
-        if (engVoice) {
-          utterance.voice = engVoice;
+        const targetLangPrefix = isRussian ? 'ru' : 'en';
+        const langVoices = voices.filter(v => v.lang.toLowerCase().startsWith(targetLangPrefix));
+        
+        // Define human gender context of our target avatars
+        let isFemale = false;
+        if (profile.telegram_id === 22222 || profile.telegram_id === 9991 || profile.telegram_id === 9993 || profile.telegram_id === 9995) {
+          isFemale = true;
+        } else if (profile.name && ['elena', 'alisa', 'sofia', 'tanya', 'diana', 'alice', 'sofia'].includes(profile.name.toLowerCase())) {
+          isFemale = true;
         }
-        utterance.rate = 1.0;
-        utterance.pitch = 1.05;
+
+        let selectedVoice = null;
+        if (langVoices.length > 0) {
+          if (isRussian) {
+            if (isFemale) {
+              selectedVoice = langVoices.find(v => v.name.includes('Milena') || v.name.includes('Katya') || v.name.includes('Tatyana') || v.name.toLowerCase().includes('female'));
+            } else {
+              selectedVoice = langVoices.find(v => v.name.includes('Pavel') || v.name.includes('Yuri') || v.name.includes('Aleksandr') || v.name.toLowerCase().includes('male'));
+            }
+          } else {
+            if (isFemale) {
+              selectedVoice = langVoices.find(v => v.name.includes('Samantha') || v.name.includes('Zira') || v.name.includes('Susan') || v.name.toLowerCase().includes('female') || v.name.includes('Google US English'));
+            } else {
+              selectedVoice = langVoices.find(v => v.name.includes('Daniel') || v.name.includes('Alex') || v.name.includes('David') || v.name.toLowerCase().includes('male'));
+            }
+          }
+          if (!selectedVoice) {
+            selectedVoice = langVoices.find(v => v.name.toLowerCase().includes('natural') || v.name.toLowerCase().includes('google')) || langVoices[0];
+          }
+        }
+
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
+        }
+        utterance.rate = 0.95; // Premium clear, well-articulated, and elegant speed pacing
+        utterance.pitch = isFemale ? 1.05 : 0.95; // Warm organic tones adapted to the respective gender character
         window.speechSynthesis.speak(utterance);
       } else {
         alert("Speech synthesis is not supported on this device.");
@@ -399,6 +530,7 @@ export default function DashboardView({
 
   // Handle server-seed selection or offline match filters based on the selected role capsule 
   const getFilteredProfiles = () => {
+    if (isTutorialActive) return TUTORIAL_PROFILES;
     if (selectedRoleFilter === 'All') return profiles;
     return profiles.filter(profile => {
       const role = (profile.role || '').toLowerCase();
@@ -652,6 +784,102 @@ export default function DashboardView({
   const executeSwipeWithHaptics = async (direction: 'left' | 'right' | 'up') => {
     if (!activeProfile) return;
 
+    if (isTutorialActive) {
+      if (tutorialStep === 0) {
+        showToast(appLanguage === 'ru'
+          ? "Пожалуйста, сначала прослушайте аудио-визитку!"
+          : "Please listen to the voice bio first!");
+        animate(dragX, 0, { type: "spring", stiffness: 300, damping: 25 });
+        animate(dragY, 0, { type: "spring", stiffness: 300, damping: 25 });
+        return;
+      }
+      if (tutorialStep === 1) {
+        if (direction !== 'left') {
+          showToast(appLanguage === 'ru'
+            ? "Неверно! Попробуйте провести влево или нажать ❌."
+            : "Oops! Try swiping left or clicking ❌ to skip.");
+          animate(dragX, 0, { type: "spring", stiffness: 300, damping: 25 });
+          animate(dragY, 0, { type: "spring", stiffness: 300, damping: 25 });
+          return;
+        }
+        try { WebApp.HapticFeedback.impactOccurred('light'); } catch (e) {}
+        setTutorialStep(2);
+        setCurrentIndex(1);
+        dragX.set(0);
+        dragY.set(0);
+        showToast(appLanguage === 'ru'
+          ? "Отлично! Карта пропущена. Переходим к шагу 3."
+          : "Superb! Card skipped. Let's move to step 3.");
+        return;
+      }
+      if (tutorialStep === 2) {
+        if (direction !== 'right') {
+          showToast(appLanguage === 'ru'
+            ? "Неверно! Попробуйте провести вправо или нажать 💬."
+            : "Oops! Try swiping right or clicking 💬 to chat.");
+          animate(dragX, 0, { type: "spring", stiffness: 300, damping: 25 });
+          animate(dragY, 0, { type: "spring", stiffness: 300, damping: 25 });
+          return;
+        }
+        try { WebApp.HapticFeedback.impactOccurred('medium'); } catch (e) {}
+        setTutorialStep(3);
+        setCurrentIndex(2);
+        dragX.set(0);
+        dragY.set(0);
+        showToast(appLanguage === 'ru'
+          ? "Прекрасно! Прямой контакт освоен. Финальный шаг!"
+          : "Fantastic! Direct contact mastered. Final step!");
+        return;
+      }
+      if (tutorialStep === 3) {
+        if (direction !== 'up') {
+          showToast(appLanguage === 'ru'
+            ? "Неверно! Попробуйте провести вверх или нажать ❤️."
+            : "Oops! Try swiping up or clicking ❤️ to Like.");
+          animate(dragX, 0, { type: "spring", stiffness: 300, damping: 25 });
+          animate(dragY, 0, { type: "spring", stiffness: 300, damping: 25 });
+          return;
+        }
+        try { WebApp.HapticFeedback.notificationOccurred('success'); } catch (e) {}
+        setIsTutorialActive(false);
+        localStorage.setItem('matcha_tutorial_interactive_completed_v4', 'true');
+        
+        setMatchedUser({
+          id: "tut_success",
+          name: "Matcha Team 🍵",
+          role: "Ultimate Matcha Guide",
+          photo_url: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=150&auto=format&fit=crop",
+          isTutorialFinished: true
+        });
+        
+        onUpdateCurrentUser({
+          ...currentUser,
+          priorityPoints: (currentUser.priorityPoints || 0) + 5,
+          matcha_sparks: (currentUser.matcha_sparks ?? 15) + 5
+        });
+        return;
+      }
+      return;
+    }
+
+    // Spend exactly 1 Matcha Spark for executing any real swipe gesture
+    const currentSparks = currentUser.matcha_sparks ?? 15;
+    if (currentSparks <= 0) {
+      showToast(appLanguage === 'ru' 
+        ? "Недостаточно Matcha Sparks! Пополните баланс кнопкой [+] вверху или пригласите друга ⚡" 
+        : "Out of Matcha Sparks! Recharge with [+] top booster or invite tech friends ⚡");
+      try { WebApp.HapticFeedback.notificationOccurred('error'); } catch (e) {}
+      animate(dragX, 0, { type: "spring", stiffness: 300, damping: 25 });
+      animate(dragY, 0, { type: "spring", stiffness: 300, damping: 25 });
+      return;
+    }
+
+    const nextSparks = Math.max(0, currentSparks - 1);
+    onUpdateCurrentUser({
+      ...currentUser,
+      matcha_sparks: nextSparks
+    });
+
     // Update quest progress
     updateQuestProgress('swipe_wave');
 
@@ -730,7 +958,15 @@ export default function DashboardView({
   };
 
   return (
-    <div className="flex-grow flex flex-col justify-between items-center w-full h-full relative" id="swipe-view-container">
+    <div className="flex-grow flex flex-col justify-between items-center w-full h-full relative font-sans" id="swipe-view-container">
+      
+      {/* Beautiful automatic dark screen spotlight overlay when interactive tutorial is active */}
+      {isTutorialActive && (
+        <div 
+          className="fixed inset-0 bg-black/65 z-25 pointer-events-auto backdrop-blur-[1.5px] transition-all duration-300"
+          id="tutorial-spotlight-backdrop"
+        />
+      )}
       
       {/* Absolute Slide-in/Fade-out Toast Notification Overlay (Top Z-50) */}
       <AnimatePresence>
@@ -749,12 +985,21 @@ export default function DashboardView({
       </AnimatePresence>
 
       {/* Role Filter Selector */}
-      <div className="w-full px-4 pt-3 pb-1 flex flex-col gap-1.5 shrink-0 z-30 select-none border-b border-black/[0.03] bg-white/45 backdrop-blur-xs" id="role-filter-section">
+      <div className="w-full px-4 pt-2.5 pb-1 flex flex-col gap-1.5 shrink-0 z-30 select-none border-b border-black/[0.03] bg-white text-neutral-800" id="role-filter-section">
         <div className="flex items-center justify-between pb-1">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[8px] font-black text-[#1A7A55] uppercase tracking-widest font-mono pl-1">
-              {appLanguage === 'ru' ? '// Фильтр ролей' : '// Filter by Role'}
-            </span>
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              <span className="text-[8px] font-black text-[#1A7A55] uppercase tracking-widest font-mono pl-1">
+                {appLanguage === 'ru' ? '// Фильтр ролей' : '// Filter by Role'}
+              </span>
+              {currentUser.ghost_mode && (
+                <span className="text-[8px] font-black text-[#00C896] bg-[#00C896]/10 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0 select-none animate-pulse" title="You are hidden from discoveries">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#00C896]" />
+                  {appLanguage === 'ru' ? 'РЕЖИМ НЕВИДИМКИ 👻' : 'GHOST ACTIVE 👻'}
+                </span>
+              )}
+            </div>
+          </div>
             {!showQuestBanner && activeQuest && (
               <button
                 onClick={() => {
@@ -767,7 +1012,6 @@ export default function DashboardView({
                 {appLanguage === 'ru' ? 'Показать квест 💫' : 'Show quest 💫'}
               </button>
             )}
-          </div>
           <button
             onClick={handleTriggerAiSuperMatch}
             disabled={isSuperMatching}
@@ -857,7 +1101,7 @@ export default function DashboardView({
                 </span>
                 <div className="text-left font-sans leading-snug">
                   <span className="text-[8px] font-black uppercase tracking-widest font-mono opacity-80 block text-[#1A7A55]">
-                    // DAILY COSMIC QUEST (ЕЖЕДНЕВНЫЙ КВЕСТ)
+                    {appLanguage === 'ru' ? '// ЕЖЕДНЕВНЫЙ КВЕСТ' : '// DAILY COSMIC QUEST'}
                   </span>
                   <span className="text-[11.5px] font-black leading-tight block">
                     {activeQuest.title}: {activeQuest.description}
@@ -907,7 +1151,46 @@ export default function DashboardView({
         id="drag-constraints-wrapper"
       >
         <AnimatePresence mode="popLayout">
-          {currentIndex < filteredProfiles.length ? (
+          {currentUser.matcha_sparks === 0 && !isTutorialActive ? (
+            <div className="relative w-full h-[450px] md:h-[465px] lg:h-[510px] max-w-[350px] flex items-center justify-center transition-all duration-300">
+              <GlassCard className="absolute w-full h-full rounded-[32px] bg-white border border-black/[0.04] p-6 flex flex-col justify-between items-center text-center shadow-lg z-30">
+                <div className="space-y-4 pt-12">
+                  <span className="text-4xl block animate-bounce">⚡</span>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-black text-[#1A1A1A] uppercase tracking-tight">
+                      {appLanguage === 'ru' ? "Энергия Разряжена!" : "Sparks Depleted!"}
+                    </h3>
+                    <p className="text-[12px] text-zinc-500 font-bold leading-normal px-2">
+                      {appLanguage === 'ru' 
+                        ? "Каждый свайп требует 1 Sparks. Быстро восполните запас бесплатно или завершите квесты!"
+                        : "Each vibe swipe consumes 1 Spark. Fast recharge your reactor core for free below or finish daily quests."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="w-full space-y-3 pb-8 text-center flex flex-col items-center">
+                  <button
+                    onClick={() => {
+                      onUpdateCurrentUser({
+                        ...currentUser,
+                        matcha_sparks: 15
+                      });
+                      try { WebApp.HapticFeedback.notificationOccurred('success'); } catch(e){}
+                      showToast(appLanguage === 'ru' 
+                        ? "🔋 Реактор запущен! Зачислено +15 Sparks!" 
+                        : "🔋 Core charged! Added +15 Matcha Sparks!");
+                    }}
+                    className="w-full h-[48px] rounded-xl bg-[#00C896] hover:bg-[#00B285] text-white font-black text-xs uppercase tracking-widest cursor-pointer transition flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    🔋 {appLanguage === 'ru' ? "БЫСТРАЯ ЗАРЯДКА +15 Sparks" : "FAST RECHARGE +15 SPARKS"}
+                  </button>
+                  <p className="text-[9px] text-[#1A7A55]/70 font-mono uppercase tracking-widest">
+                    {appLanguage === 'ru' ? "// ЛИМИТЫ ОБНОВЛЯЮТСЯ МГНОВЕННО" : "// CORE FLUX CAPACITY UPDATES LIVE"}
+                  </p>
+                </div>
+              </GlassCard>
+            </div>
+          ) : currentIndex < filteredProfiles.length ? (
             (() => {
               const activeProfile = filteredProfiles[currentIndex];
               const nextProfile = filteredProfiles[currentIndex + 1];
@@ -956,20 +1239,29 @@ export default function DashboardView({
                       style={{ x: dragX, y: dragY, rotate: rotateValue, opacity: opacityValue, scale: scaleValue, touchAction: 'none' }}
                       drag={true}
                       dragConstraints={cardWrapperRef}
-                      dragElastic={0.15}
+                      dragElastic={0.18}
                       onDragEnd={(e, info) => {
                         const absX = Math.abs(info.offset.x);
                         const absY = Math.abs(info.offset.y);
                         
-                        if (absY > absX && (info.velocity.y < -350 || info.offset.y < -100)) {
+                        let swipeDetected = false;
+                        if (absY > absX && (info.velocity.y < -120 || info.offset.y < -40)) {
                           executeSwipeWithHaptics('up');
-                        } else if (info.velocity.x > 350 || info.offset.x > 100) {
+                          swipeDetected = true;
+                        } else if (info.velocity.x > 120 || info.offset.x > 40) {
                           executeSwipeWithHaptics('right');
-                        } else if (info.velocity.x < -350 || info.offset.x < -100) {
+                          swipeDetected = true;
+                        } else if (info.velocity.x < -120 || info.offset.x < -40) {
                           executeSwipeWithHaptics('left');
+                          swipeDetected = true;
+                        }
+
+                        if (!swipeDetected) {
+                          animate(dragX, 0, { type: "spring", stiffness: 350, damping: 22 });
+                          animate(dragY, 0, { type: "spring", stiffness: 350, damping: 22 });
                         }
                       }}
-                      className="absolute w-full h-full rounded-[32px] bg-gradient-to-br from-[#C8E6D4] to-[#A8D5B8] border border-black/[0.04] shadow-[0_16px_40px_rgba(26,122,85,0.06)] flex flex-col justify-between overflow-hidden cursor-grab active:cursor-grabbing z-20"
+                      className={`absolute w-full h-full rounded-[32px] bg-gradient-to-br from-[#C8E6D4] to-[#A8D5B8] border border-black/[0.04] shadow-[0_16px_40px_rgba(26,122,85,0.06)] flex flex-col justify-between overflow-hidden cursor-grab active:cursor-grabbing transition-all ${isTutorialActive ? 'z-30 ring-[5px] ring-[#00C896] ring-offset-2 shadow-[0_0_50px_rgba(0,198,150,0.65)] animate-[pulse_1.8s_infinite]' : 'z-20'}`}
                       initial={{ scale: 0.95, y: 10, opacity: 0 }}
                       animate={{ scale: 1, y: 0, opacity: 1, transition: { type: "spring", stiffness: 300, damping: 25 } }}
                       exit={() => {
@@ -993,6 +1285,51 @@ export default function DashboardView({
                       }}
                       id={`swipe-card-${activeProfile.id}`}
                     >
+                      {/* Interactive Gesture Swipe Overlay Indicator - zero dimming to let the card text shine */}
+                      {isTutorialActive && (
+                        <div className="absolute inset-0 bg-black/10 backdrop-blur-[0.5px] pointer-events-none z-40 flex flex-col items-center justify-center p-6 text-center select-none rounded-[32px]">
+                          {tutorialStep === 1 && (
+                            <motion.div 
+                              initial={{ x: 40, opacity: 0.3 }}
+                              animate={{ x: [-30, -65, -30], opacity: [0.6, 1, 0.6] }}
+                              transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                              className="text-rose-500 flex flex-col items-center gap-3 drop-shadow-[0_4px_12px_rgba(239,68,68,0.7)]"
+                            >
+                              <span className="text-8xl font-black leading-none font-sans">←</span>
+                              <span className="text-[12px] font-extrabold uppercase tracking-widest font-mono bg-rose-600 text-white px-3 py-1 rounded-full shadow-md">
+                                {appLanguage === 'ru' ? 'ПРОВЕДИТЕ ВЛЕВО' : 'SWIPE LEFT'}
+                              </span>
+                            </motion.div>
+                          )}
+                          {tutorialStep === 2 && (
+                            <motion.div 
+                              initial={{ x: -40, opacity: 0.3 }}
+                              animate={{ x: [30, 65, 30], opacity: [0.6, 1, 0.6] }}
+                              transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                              className="text-amber-500 flex flex-col items-center gap-3 drop-shadow-[0_4px_12px_rgba(245,158,11,0.7)]"
+                            >
+                              <span className="text-8xl font-black leading-none font-sans">→</span>
+                              <span className="text-[12px] font-extrabold uppercase tracking-widest font-mono bg-amber-500 text-white px-3 py-1 rounded-full shadow-md">
+                                {appLanguage === 'ru' ? 'ПРОВЕДИТЕ ВПРАВО' : 'SWIPE RIGHT'}
+                              </span>
+                            </motion.div>
+                          )}
+                          {tutorialStep === 3 && (
+                            <motion.div 
+                              initial={{ y: 40, opacity: 0.3 }}
+                              animate={{ y: [-30, -65, -30], opacity: [0.6, 1, 0.6] }}
+                              transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                              className="text-emerald-400 flex flex-col items-center gap-3 drop-shadow-[0_4px_12px_rgba(16,185,129,0.7)]"
+                            >
+                              <span className="text-8xl font-black leading-none font-sans">↑</span>
+                              <span className="text-[12px] font-extrabold uppercase tracking-widest font-mono bg-[#00C896] text-white px-3 py-1 rounded-full shadow-md">
+                                {appLanguage === 'ru' ? 'ПРОВЕДИТЕ ВВЕРХ' : 'SWIPE UP'}
+                              </span>
+                            </motion.div>
+                          )}
+                        </div>
+                      )}
+
                       <div className="w-full h-full flex flex-col justify-between pointer-events-none select-none">
                         
                         {/* AVATAR & GRADIENT SECTION */}
@@ -1051,7 +1388,7 @@ export default function DashboardView({
                               <button
                                 type="button"
                                 onClick={(e) => handlePlayCandidateVoice(activeProfile, e)}
-                                className="w-7 h-7 rounded-full bg-[#1A7A55]/10 hover:bg-[#1A7A55]/20 active:scale-95 transition flex items-center justify-center cursor-pointer pointer-events-auto shrink-0 relative animate-none"
+                                className={`w-7 h-7 rounded-full bg-[#1A7A55]/10 hover:bg-[#1A7A55]/20 active:scale-95 transition flex items-center justify-center cursor-pointer pointer-events-auto shrink-0 relative ${isTutorialActive && tutorialStep === 0 ? 'ring-4 ring-[#00C896] animate-pulse scale-110 z-30 bg-emerald-500/20' : ''}`}
                                 title="Listen to Voice Bio"
                               >
                                 <span className="text-[12px]">🎙️</span>
@@ -1129,9 +1466,9 @@ export default function DashboardView({
                                 {(translatedProfile ? translatedProfile.ai_facts : activeProfile.ai_facts) && (translatedProfile ? translatedProfile.ai_facts : activeProfile.ai_facts).length > 0 && (
                                   <div className="space-y-0.5 mt-0.5 pb-0.5 text-left border-y border-black/[0.03] py-1">
                                     {(translatedProfile ? translatedProfile.ai_facts : activeProfile.ai_facts).slice(0, 3).map((fact: string, fIdx: number) => (
-                                      <div key={fIdx} className="flex items-center gap-1.5 text-[10px] font-bold text-[#1A1A1A]/80 leading-tight">
-                                        <span className="text-[#00C896] text-[9px] shrink-0 font-mono">⚡</span>
-                                        <span className="truncate">{fact}</span>
+                                      <div key={fIdx} className="flex items-start gap-1.5 text-[10.5px] font-bold text-[#1A1A1A]/85 leading-tight">
+                                        <span className="text-[#00C896] text-[9px] shrink-0 font-mono mt-0.5">⚡</span>
+                                        <span className="line-clamp-2 break-words flex-1 pr-1">{fact}</span>
                                       </div>
                                     ))}
                                   </div>
@@ -1215,13 +1552,45 @@ export default function DashboardView({
         </AnimatePresence>
       </div>
 
-      {/* Action buttons (✕ ♥ 💬) strictly вынесены за пределы draggable div */}
+      {/* Floating Trainer Guide bubble for the Interactive walkthrough mode */}
+      {isTutorialActive && (
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-[92%] mx-auto bg-white border border-[#00C896]/45 p-4 rounded-2xl shadow-[0_8px_24px_rgba(0,200,150,0.12)] flex items-start gap-3.5 mb-3 select-none z-[31] relative"
+        >
+          <div className="w-10 h-10 rounded-full bg-[#00C896]/15 flex items-center justify-center text-xl shrink-0 border border-[#00C896]/20">
+            🍵
+          </div>
+          <div className="text-left flex-1 leading-snug space-y-1">
+            <p className="text-[10px] font-black uppercase text-[#1A7A55] tracking-widest font-mono">
+              {appLanguage === 'ru' ? '// ШАГ ОБУЧЕНИЯ:' : '// TRAINING STEP:'} {tutorialStep + 1} / 4
+            </p>
+            <p className="text-[12.5px] font-black text-[#1A1A1A]">
+              {tutorialStep === 0 && (appLanguage === 'ru' 
+                ? 'Прослушайте аудио-визитку Артема. Нажмите на мерцающую кнопку 🎙️ на его карточке!'
+                : "Listen to Artem's voice bio. Click the pulsing 🎙️ recorder button on his card!")}
+              {tutorialStep === 1 && (appLanguage === 'ru' 
+                ? 'Отлично! Теперь проведите карту ВЛЕВО (или нажмите ✕) чтобы пропустить её.'
+                : 'Excellent! Now swipe the card LEFT (or click ✕) to decline / pass.')}
+              {tutorialStep === 2 && (appLanguage === 'ru' 
+                ? 'Супер! Теперь проведите карту ВПРАВО (или нажмите 💬) для перехода в чат к Алисе.'
+                : 'Superb! Now swipe the card RIGHT (or click 💬) to transition into active chat with Alisa.')}
+              {tutorialStep === 3 && (appLanguage === 'ru' 
+                ? 'Финальный шаг! Проведите карту ВВЕРХ (или нажмите ❤️) чтобы отправить Ярославу лайк!'
+                : 'Final step! Swipe the card UP (or click ❤️) to send Yaroslav a mutual vibe like!')}
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Action buttons (✕ ♥ 💬) elevated in z-index to stay above backdrop spotlight overlay during tutorial */}
       {currentIndex < filteredProfiles.length && (
-        <div className="flex items-center justify-center gap-5 pb-5 shrink-0" id="swipe-controls-tray">
+        <div className={`flex items-center justify-center gap-5 pb-5 shrink-0 relative transition-all ${isTutorialActive ? 'z-30 pointer-events-auto' : 'z-10'}`} id="swipe-controls-tray">
           {/* Dislike ✕ button: bg #FFFFFF, border 1.5px solid #E0E0E0, icon тёмный #1A1A1A, height/width 56px */}
           <button
             onClick={() => executeSwipeWithHaptics('left')}
-            className="w-[56px] h-[56px] rounded-full bg-white border-[1.5px] border-[#E0E0E0] text-[#1A1A1A] flex items-center justify-center transition active:scale-95 hover:bg-neutral-50 shadow-sm cursor-pointer"
+            className={`w-[56px] h-[56px] rounded-full bg-white border-[1.5px] border-[#E0E0E0] text-[#1A1A1A] flex items-center justify-center transition active:scale-95 hover:bg-neutral-50 shadow-sm cursor-pointer ${isTutorialActive && tutorialStep === 1 ? 'ring-4 ring-rose-500 ring-offset-2 animate-bounce scale-110 z-30' : ''}`}
             title="Next vibe energy (Pass left)"
             id="swipe-reject-btn"
           >
@@ -1231,7 +1600,7 @@ export default function DashboardView({
           {/* Vibe Like ♥ central button (Like Up): slightly bigger: width/height 72px, bg-[#00C896], white icon */}
           <button
             onClick={() => executeSwipeWithHaptics('up')}
-            className="w-[72px] h-[72px] rounded-full bg-[#00C896] text-white flex items-center justify-center transition active:scale-95 hover:opacity-95 shadow-[0_4px_16px_rgba(0,200,150,0.25)] cursor-pointer"
+            className={`w-[72px] h-[72px] rounded-full bg-[#00C896] text-white flex items-center justify-center transition active:scale-95 hover:opacity-95 shadow-[0_4px_16px_rgba(0,200,150,0.25)] cursor-pointer ${isTutorialActive && tutorialStep === 3 ? 'ring-4 ring-[#00C896] ring-offset-2 animate-bounce scale-110 z-30' : ''}`}
             title="Like (Swipe up)"
             id="swipe-accept-btn"
           >
@@ -1241,7 +1610,7 @@ export default function DashboardView({
           {/* Send Instant Vibe / Chat 💬 button (Swipe Right): bg #FFFFFF, border 1.5px solid #E0E0E0, icon тёмный #1A1A1A, height/width 56px */}
           <button
             onClick={() => executeSwipeWithHaptics('right')}
-            className="w-[56px] h-[56px] rounded-full bg-white border-[1.5px] border-[#E0E0E0] text-[#1A1A1A] flex items-center justify-center transition active:scale-95 hover:bg-neutral-50 shadow-sm cursor-pointer"
+            className={`w-[56px] h-[56px] rounded-full bg-white border-[1.5px] border-[#E0E0E0] text-[#1A1A1A] flex items-center justify-center transition active:scale-95 hover:bg-neutral-50 shadow-sm cursor-pointer ${isTutorialActive && tutorialStep === 2 ? 'ring-4 ring-amber-500 ring-offset-2 animate-bounce scale-110 z-30' : ''}`}
             title="Open chat / profile (Swipe right)"
             id="swipe-chat-prompt"
           >
@@ -1257,73 +1626,95 @@ export default function DashboardView({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-[#F5F5F0]/95 backdrop-blur-md flex items-center justify-center p-4 select-none"
+            className="fixed inset-0 z-50 bg-[#F5F5F0]/98 backdrop-blur-md flex items-center justify-center p-4 select-none"
             id="match-vibe-overlay"
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white border border-[#E8F5EE] rounded-[32px] p-8 max-w-sm w-full text-center space-y-5 shadow-2xl relative overflow-hidden"
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white border-2 border-[#00C896]/20 rounded-[36px] p-7 max-w-sm w-full text-center space-y-5 shadow-2xl relative overflow-hidden"
             >
               <div className="pt-2">
-                <span className="text-[11px] font-extrabold text-[#1A7A55] tracking-widest bg-[#E8F5EE] px-4 py-2 rounded-full uppercase block mx-auto w-fit font-mono">
-                  IT'S A VIBE ⚡
+                <span className="text-[10px] font-black text-[#1A7A55] tracking-widest bg-[#00C896]/10 px-4 py-2 rounded-full uppercase block mx-auto w-fit font-mono animate-bounce">
+                  {matchedUser.isTutorialFinished 
+                    ? (appLanguage === 'ru' ? 'ОБУЧЕНИЕ ЗАВЕРШЕНО! 🏆' : 'TRAINING COMPLETE! 🏆')
+                    : (appLanguage === 'ru' ? 'ЕСТЬ КОНТАКТ! ⚡' : 'IT\'S A VIBE ⚡')}
                 </span>
                 
-                <h2 className="text-3xl font-black tracking-tighter text-[#1A1A1A] mt-5 font-display leading-tight font-display">
-                  mutual vibe detected!
+                <h2 className="text-2xl font-black tracking-tight text-[#1A1A1A] mt-5 leading-none">
+                  {matchedUser.isTutorialFinished
+                    ? (appLanguage === 'ru' ? 'Вы великолепны!' : 'You are amazing!')
+                    : (appLanguage === 'ru' ? 'Вайб совпал!' : 'Mutual Vibe Detected!')}
                 </h2>
                 
-                <p className="text-[12.5px] text-[#1A7A55]/80 font-bold mt-2 leading-relaxed">
-                  You and <span className="font-extrabold text-[#1A1A1A]">@{matchedUser.username || matchedUser.id}</span> swiped each other! Talk directly on Telegram.
+                <p className="text-[12.5px] text-[#1A7A55]/90 font-bold mt-2 leading-relaxed font-sans">
+                  {matchedUser.isTutorialFinished
+                    ? (appLanguage === 'ru'
+                       ? "Вы успешно освоили жесты свайпов и управление! За прохождение зачислено +5 Энергии и +5 Буста."
+                       : "You have successfully mastered swipe gestures and audio playback guides! Added +5 Sparks and +5 priorityPoints to your profile.")
+                    : (appLanguage === 'ru' 
+                       ? `Вы и @${matchedUser.username || matchedUser.id} лайкнули друг друга! Напишите напрямую.` 
+                       : `You and @${matchedUser.username || matchedUser.id} swiped each other! Talk directly on Telegram.`)}
                 </p>
               </div>
 
-              {/* Connected heads */}
-              <div className="flex items-center justify-center -space-x-4 py-3">
-                <div className="relative w-18 h-18 rounded-full bg-[#1A1A1A] text-[#00C896] flex items-center justify-center text-2xl font-black border-4 border-white shadow-md overflow-hidden">
+              {/* Connected heads with a pulsing heart vector overlay */}
+              <div className="flex items-center justify-center -space-x-5 py-3 relative">
+                <div className="absolute w-12 h-12 rounded-full bg-red-500/20 blur-xl animate-ping" />
+                <div className="relative w-18 h-18 rounded-full bg-[#1A1A1A] text-[#00C896] flex items-center justify-center text-xl font-black border-4 border-white shadow-md overflow-hidden">
                   {currentUser.photo_url ? (
                     <img src={currentUser.photo_url} alt={currentUser.name} className="w-full h-full object-cover" />
                   ) : (
-                    currentUser.name.charAt(0)
+                    <span className="font-sans text-lg">{currentUser.name.charAt(0)}</span>
                   )}
                 </div>
-                <div className="relative w-18 h-18 rounded-full bg-[#00C896] text-[#1A1A1A] flex items-center justify-center text-2xl font-black border-4 border-white shadow-md overflow-hidden">
+                <div className="relative w-18 h-18 rounded-full bg-[#00C896] text-[#1A1A1A] flex items-center justify-center text-xl font-black border-4 border-white shadow-md overflow-hidden z-10">
                   {matchedUser.photo_url ? (
                     <img src={matchedUser.photo_url} alt={matchedUser.name} className="w-full h-full object-cover" />
                   ) : (
-                    matchedUser.name.charAt(0)
+                    <span className="font-sans text-lg">{matchedUser.name.charAt(0)}</span>
                   )}
                 </div>
               </div>
 
               {/* Action buttons inside overlay */}
-              <div className="flex flex-col gap-2 w-full pt-2">
-                <button
-                  onClick={() => {
-                    const domain = matchedUser.username || matchedUser.id;
-                    const tgLink = `https://t.me/${domain}`;
-                    try {
-                      WebApp.openTelegramLink(tgLink);
-                    } catch (e) {
-                      window.open(tgLink, '_blank');
-                    }
-                  }}
-                  className="w-full h-[48px] rounded-xl bg-[#00C896] hover:opacity-95 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition active:scale-[0.98]"
-                  id="send-telegram-write-btn"
-                >
-                  <MessageSquare className="h-4.5 w-4.5 stroke-[2.5]" />
-                  <span>Send Telegram Write 💬</span>
-                </button>
+              <div className="flex flex-col gap-2 w-full pt-1">
+                {matchedUser.isTutorialFinished ? (
+                  <button
+                    onClick={() => setMatchedUser(null)}
+                    className="w-full h-[48px] rounded-xl bg-[#00C896] hover:bg-[#00B285] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition active:scale-[0.98]"
+                  >
+                    <span>{appLanguage === 'ru' ? 'ВОЙТИ В ДЕК АНКЕТ 🍵' : 'ENTER MAIN DECK 🍵'}</span>
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        const domain = matchedUser.username || matchedUser.id;
+                        const tgLink = `https://t.me/${domain}`;
+                        try {
+                          WebApp.openTelegramLink(tgLink);
+                        } catch (e) {
+                          window.open(tgLink, '_blank');
+                        }
+                      }}
+                      className="w-full h-[48px] rounded-xl bg-[#00C896] hover:bg-[#00B285] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition active:scale-[0.98]"
+                      id="send-telegram-write-btn"
+                    >
+                      <MessageSquare className="h-4.5 w-4.5 stroke-[2.5]" />
+                      <span>{appLanguage === 'ru' ? 'Написать в Telegram 💬' : 'Send Telegram Write 💬'}</span>
+                    </button>
 
-                <button
-                  onClick={() => setMatchedUser(null)}
-                  className="w-full h-[42px] rounded-xl border border-black/[0.08] text-neutral-600 hover:bg-neutral-50 font-bold text-xs uppercase tracking-wider flex items-center justify-center cursor-pointer transition active:scale-[0.98]"
-                  id="keep-swiping-btn"
-                >
-                  <span>Keep Swiping ⚡</span>
-                </button>
+                    <button
+                      onClick={() => setMatchedUser(null)}
+                      className="w-full h-[42px] rounded-xl border border-black/[0.08] text-neutral-600 hover:bg-neutral-50 font-bold text-xs uppercase tracking-wider flex items-center justify-center cursor-pointer transition active:scale-[0.98]"
+                      id="keep-swiping-btn"
+                    >
+                      <span>{appLanguage === 'ru' ? 'Искать дальше ⚡' : 'Keep Swiping ⚡'}</span>
+                    </button>
+                  </>
+                )}
               </div>
 
               <p className="text-[9.5px] text-[#6B7280] font-mono leading-tight">
@@ -1334,14 +1725,14 @@ export default function DashboardView({
         )}
       </AnimatePresence>
 
-      {/* AI CELESTIAL COSMIC SUPER-MATCH OVERLAY */}
+      {/* AI CELESTIAL COSMIC SUPER-MATCH OVERLAY - BRAND REDESIGNED */}
       <AnimatePresence>
         {superMatchedProfile && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-[#1A1A1A]/95 backdrop-blur-md flex items-center justify-center p-4 select-none"
+            className="fixed inset-0 z-50 bg-[#104030]/98 backdrop-blur-md flex items-center justify-center p-4 select-none"
             id="supermatch-vibe-overlay"
           >
             <motion.div
@@ -1349,57 +1740,59 @@ export default function DashboardView({
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.9, y: 30, opacity: 0 }}
               transition={{ type: 'spring', damping: 20 }}
-              className="bg-zinc-900 border border-amber-500/30 rounded-[32px] p-7 max-w-sm w-full text-center space-y-5 shadow-[0_24px_50px_rgba(209,146,0,0.2)] relative overflow-hidden text-white"
+              className="bg-white border-2 border-[#D19200]/20 rounded-[36px] p-7 max-w-sm w-full text-center space-y-5 shadow-2xl relative overflow-hidden text-neutral-800"
             >
-              {/* Pulsing visual halo */}
-              <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-amber-500/10 to-transparent pointer-events-none" />
+              {/* Pulsing subtle ambient halo */}
+              <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-[#00C896]/10 to-transparent pointer-events-none" />
 
               <div>
-                <span className="text-[10px] font-black text-[#D19200] tracking-[0.2em] bg-amber-500/20 px-3.5 py-1.5 rounded-full uppercase block mx-auto w-fit font-mono animate-pulse">
+                <span className="text-[9.5px] font-black text-[#D19200] tracking-[0.2em] bg-amber-500/10 border border-amber-500/20 px-3.5 py-1.5 rounded-full uppercase block mx-auto w-fit font-mono animate-pulse">
                   ⚡ AI Cosmic Match ⚡
                 </span>
                 
-                <h2 className="text-2xl font-black tracking-tight text-white mt-5 leading-none">
-                  Ultimate Vibe Fusion!
+                <h2 className="text-2xl font-black tracking-tight text-[#1A1A1A] mt-5 leading-none font-display">
+                  {appLanguage === 'ru' ? 'Полное Слияние Вайбов!' : 'Ultimate Vibe Fusion!'}
                 </h2>
                 
-                <p className="text-[11px] text-zinc-300 font-medium mt-2 leading-relaxed px-2">
-                  Our neural engine calculated peak compatibility based on overlapping tags and profile data between you and <span className="text-[#00C896] font-extrabold">@{superMatchedProfile.username || 'user'}</span>.
+                <p className="text-[12.5px] text-[#1A7A55] font-bold mt-2 leading-relaxed px-1">
+                  {appLanguage === 'ru' 
+                    ? `Наш нейросетевой фильтр рассчитал пиковую когнитивную совместимость ваших интересов с @${superMatchedProfile.username || 'user'}:`
+                    : `Our neural engine calculated peak compatibility based on overlapping tags and profile data between you and @${superMatchedProfile.username || 'user'}:`}
                 </p>
               </div>
 
-              {/* Connected overlapping visual representation */}
+              {/* Overlapping premium head visualizer */}
               <div className="flex items-center justify-center -space-x-4 py-2 relative">
-                <div className="absolute w-24 h-24 rounded-full bg-amber-500/15 animate-ping opacity-60 pointer-events-none" />
+                <div className="absolute w-20 h-20 rounded-full bg-[#00C896]/15 animate-ping opacity-60 pointer-events-none" />
                 
-                <div className="relative w-16 h-16 rounded-full bg-[#1A1A1A] text-[#00C896] flex items-center justify-center text-xl font-black border-2 border-amber-500 shadow-md overflow-hidden shrink-0">
+                <div className="relative w-16 h-16 rounded-full bg-[#1A1A1A] text-[#00C896] flex items-center justify-center text-lg font-black border-4 border-white shadow-md overflow-hidden shrink-0">
                   {currentUser.photo_url ? (
                     <img src={currentUser.photo_url} alt={currentUser.name} className="w-full h-full object-cover" />
                   ) : (
-                    currentUser.name.charAt(0)
+                    <span className="font-sans text-[#00C896]">{currentUser.name.charAt(0)}</span>
                   )}
                 </div>
                 
-                <div className="relative w-16 h-16 rounded-full bg-[#00C896] text-[#1A1A1A] flex items-center justify-center text-xl font-black border-2 border-amber-500 shadow-md overflow-hidden shrink-0">
+                <div className="relative w-16 h-16 rounded-full bg-[#00C896] text-[#1A1A1A] flex items-center justify-center text-lg font-black border-4 border-white shadow-md overflow-hidden shrink-0 z-10">
                   {superMatchedProfile.photo_url ? (
                     <img src={superMatchedProfile.photo_url} alt={superMatchedProfile.name} className="w-full h-full object-cover" />
                   ) : (
-                    superMatchedProfile.name.charAt(0)
+                    <span className="font-sans text-neutral-800">{superMatchedProfile.name.charAt(0)}</span>
                   )}
                 </div>
               </div>
 
-              {/* AI deep-level compatibility statement */}
-              <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-left font-sans space-y-1">
-                <span className="text-[8px] font-bold text-amber-500 font-mono uppercase tracking-widest block">
-                  // COGNITIVE COMPATIBILITY METRIC
+              {/* AI compatibility metrics in warm Matcha sand color base */}
+              <div className="bg-[#F5F5F0] border border-black/[0.04] rounded-2xl p-4 text-left font-sans space-y-1">
+                <span className="text-[8px] font-bold text-[#1A7A55] font-mono uppercase tracking-widest block">
+                  {appLanguage === 'ru' ? '// МЕТРИКА КОГНИТИВНОГО СХОДСТВА' : '// COGNITIVE COMPATIBILITY METRIC'}
                 </span>
-                <p className="text-[11px] leading-relaxed text-zinc-100 italic tracking-tight font-medium">
-                  "{superMatchVibeReason}"
+                <p className="text-[12px] leading-relaxed text-[#1A1A1A]/95 italic tracking-tight font-extrabold">
+                  "{superMatchVibeReason || (appLanguage === 'ru' ? 'Превосходная сочетаемость интересов и стиля кода.' : 'Outstanding alignment on core lifestyle vectors.')}"
                 </p>
               </div>
 
-              {/* Action buttons inside super-match dialog */}
+              {/* Action buttons inside supermatch dialog */}
               <div className="flex flex-col gap-2 w-full pt-1">
                 <button
                   onClick={() => {
@@ -1411,27 +1804,142 @@ export default function DashboardView({
                       window.open(tgLink, '_blank');
                     }
                   }}
-                  className="w-full h-[48px] rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:opacity-95 text-[#1A1A1A] font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition active:scale-[0.98]"
+                  className="w-full h-[48px] rounded-xl bg-[#00C896] hover:bg-[#00B285] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition active:scale-[0.98]"
                   id="supermatch-send-tg-btn"
                 >
                   <MessageSquare className="h-4.5 w-4.5 stroke-[2.5]" />
-                  <span>Send Telegram Write 💬</span>
+                  <span>{appLanguage === 'ru' ? 'Написать в Telegram 💬' : 'Send Telegram Write 💬'}</span>
                 </button>
 
                 <button
                   onClick={() => setSuperMatchedProfile(null)}
-                  className="w-full h-[40px] rounded-xl bg-transparent border border-white/10 hover:bg-white/5 text-zinc-400 font-bold text-xs uppercase tracking-wider flex items-center justify-center cursor-pointer transition active:scale-[0.98]"
+                  className="w-full h-[40px] rounded-xl bg-transparent border border-black/[0.08] text-neutral-500 hover:bg-neutral-50 font-bold text-xs uppercase tracking-wider flex items-center justify-center cursor-pointer transition duration-150"
                   id="supermatch-close-btn"
                 >
-                  <span>Close Overlay</span>
+                  <span>{appLanguage === 'ru' ? 'Закрыть окно' : 'Close Overlay'}</span>
                 </button>
               </div>
 
-              <p className="text-[9px] text-zinc-500 font-mono leading-none">
+              <p className="text-[9px] text-zinc-400 font-mono leading-none">
                 {currentUser.name} & {superMatchedProfile.name} • Deep AI Matcher
               </p>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* COMPREHENSIVE WALKTHROUGH TUTORIAL GUIDE MODAL */}
+      <AnimatePresence>
+        {showTutorialModal && (
+          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 select-none">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#F5F5F0] border border-[#00C896]/20 rounded-[32px] p-6 max-w-sm w-full space-y-4 shadow-2xl relative overflow-hidden"
+            >
+              <button
+                type="button"
+                onClick={() => setShowTutorialModal(false)}
+                className="absolute right-4 top-4 hover:bg-black/[0.05] p-1.5 rounded-full text-neutral-500 hover:text-black transition cursor-pointer"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+
+              <div className="text-center pt-2">
+                <span className="text-[9px] font-black text-[#1A7A55] tracking-widest bg-[#00C896]/10 px-3 py-1.5 rounded-full uppercase block mx-auto w-fit font-mono">
+                  {appLanguage === 'ru' ? 'РУКОВОДСТВО ПОЛЬЗОВАТЕЛЯ 📖' : 'MATCHA WALKTHROUGH 📖'}
+                </span>
+                <h2 className="text-2xl font-black text-[#1A1A1A] font-display mt-3 leading-tight">
+                  {appLanguage === 'ru' ? 'Как пользоваться?' : 'How to use Matcha?'}
+                </h2>
+                <p className="text-[11.5px] text-neutral-500 font-medium leading-normal mt-1">
+                  {appLanguage === 'ru' 
+                    ? 'Простые свайпы и действия для поиска идеального окружения:' 
+                    : 'Simple gestures and actions to find your ultimate vibe crowd:'}
+                </p>
+              </div>
+
+              <div className="space-y-3.5 pt-2 text-left">
+                {/* Swipe Left gesture */}
+                <div className="flex gap-3.5 items-start bg-white p-3.5 rounded-2xl border border-black/[0.02]">
+                  <div className="w-9 h-9 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 rounded-full flex items-center justify-center text-sm font-black shrink-0 border border-neutral-200">
+                    ❌
+                  </div>
+                  <div className="space-y-0.5 leading-tight">
+                    <p className="text-[12.5px] font-extrabold text-[#1A1A1A]">
+                      {appLanguage === 'ru' ? '👈 Свайп Влево / Кнопка [ ❌ ]' : '👈 Swipe Left / Button [ ❌ ]'}
+                    </p>
+                    <p className="text-[11px] text-zinc-500 font-bold leading-tight">
+                      {appLanguage === 'ru' 
+                        ? 'Пропустить анкету и перейти дальше. Никакого негатива!' 
+                        : 'Pass or skip profile. Move safely to the next mind node.'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Swipe Up gesture */}
+                <div className="flex gap-3.5 items-start bg-[#E8F5EE]/40 p-3.5 rounded-2xl border border-[#00C896]/10">
+                  <div className="w-9 h-9 bg-[#00C896] text-white rounded-full flex items-center justify-center text-sm font-black shrink-0">
+                    ❤️
+                  </div>
+                  <div className="space-y-0.5 leading-tight">
+                    <p className="text-[12.5px] font-extrabold text-[#1A7A55]">
+                      {appLanguage === 'ru' ? '👆 Свайп Вверх / Кнопка [ ❤️ ]' : '👆 Swipe Up / Button [ ❤️ ]'}
+                    </p>
+                    <p className="text-[11px] text-[#1A7A55]/90 font-bold leading-tight">
+                      {appLanguage === 'ru' 
+                        ? 'Поставить когнитивный лайк. Если симпатия взаимна, откроется экран "Вайб совпал!"'
+                        : 'Vibe Like. A mutual swipe-up triggers the instant "Vibe Match!" overlay.'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Swipe Right gesture */}
+                <div className="flex gap-3.5 items-start bg-amber-500/5 p-3.5 rounded-2xl border border-amber-500/10">
+                  <div className="w-9 h-9 bg-[#F5F5F0] hover:bg-black/[0.01] border border-black/[0.1] text-zinc-700 rounded-full flex items-center justify-center text-sm font-black shrink-0">
+                    💬
+                  </div>
+                  <div className="space-y-0.5 leading-tight">
+                    <p className="text-[12.5px] font-extrabold text-amber-600">
+                      {appLanguage === 'ru' ? '👉 Свайп Вправо / Кнопка [ 💬 ]' : '👉 Swipe Right / Button [ 💬 ]'}
+                    </p>
+                    <p className="text-[11px] text-amber-700/80 font-bold leading-tight">
+                      {appLanguage === 'ru' 
+                        ? 'Мгновенный контакт! Автоматически ставит лайк и сразу открывает диалог прямо в Telegram.'
+                        : 'Instant Direct Chat! Automatically likes them and redirects you to write to them on Telegram.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 w-full pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsTutorialActive(true);
+                    setTutorialStep(0);
+                    setCurrentIndex(0);
+                    setShowTutorialModal(false);
+                    showToast(appLanguage === 'ru' 
+                      ? "Тренажер запущен! Прослушайте приветствие Артема 🎙" 
+                      : "Training bot connected! Click the 🎙 near Artem to listen first!");
+                  }}
+                  className="w-full h-[48px] rounded-xl bg-[#00C896] hover:bg-[#00B285] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center cursor-pointer transition select-none"
+                >
+                  {appLanguage === 'ru' ? 'НАЧАТЬ ТРЕНИРОВКУ 🚀' : 'START INTERACTIVE WORKOUT 🚀'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowTutorialModal(false)}
+                  className="w-full h-[40px] rounded-xl border border-black/[0.1] text-neutral-600 hover:bg-black/[0.02] font-semibold text-xs uppercase tracking-wider flex items-center justify-center cursor-pointer transition select-none"
+                >
+                  {appLanguage === 'ru' ? 'Пропустить ⚡' : 'Skip Workout ⚡'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

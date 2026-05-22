@@ -16,6 +16,9 @@ export interface SupabaseUser {
   photo_url?: string;
   matcha_sparks?: number;
   voice_bio?: string;
+  ghost_mode?: boolean;
+  ambient_pushes?: boolean;
+  priorityPoints?: number;
 }
 
 // LocalStorage Fallback database helpers
@@ -26,7 +29,10 @@ const getLocalUsers = (): SupabaseUser[] => {
       id: `seeded_${p.telegram_id}`,
       ...p,
       matcha_sparks: 15,
-      voice_bio: undefined
+      voice_bio: undefined,
+      ghost_mode: false,
+      ambient_pushes: true,
+      priorityPoints: 0
     }));
     localStorage.setItem('matcha_local_users', JSON.stringify(list));
     return list;
@@ -108,8 +114,54 @@ export const onboardUser = async (userData: {
   photo_url?: string;
   matcha_sparks?: number;
   voice_bio?: string;
+  ghost_mode?: boolean;
+  ambient_pushes?: boolean;
+  priorityPoints?: number;
+  referred_by?: string;
 }): Promise<SupabaseUser | null> => {
   const refCode = `REF_${userData.telegram_id}`;
+  
+  // Handle referral reward if new user and referred_by is supplied
+  if (userData.referred_by) {
+    const rawRefCode = userData.referred_by;
+    // Extract numerical referrer telegram ID (e.g., from REF_12345 or 12345)
+    const refTgId = Number(rawRefCode.replace('REF_', ''));
+    if (!isNaN(refTgId) && refTgId !== userData.telegram_id) {
+      // 1. Supabase referrer reward
+      try {
+        const { data: referrer, error: refErr } = await supabase
+          .from('users')
+          .select('id, matcha_sparks, priorityPoints')
+          .eq('telegram_id', refTgId)
+          .maybeSingle();
+
+        if (!refErr && referrer) {
+          const newSparks = (referrer.matcha_sparks ?? 15) + 10;
+          const newPriority = (referrer.priorityPoints ?? 0) + 5;
+          await supabase
+            .from('users')
+            .update({ matcha_sparks: newSparks, priorityPoints: newPriority })
+            .eq('id', referrer.id);
+        }
+      } catch (err) {
+        console.warn("Failed to credit referrer in Supabase:", err);
+      }
+
+      // 2. Fallback LocalStorage referrer reward
+      try {
+        const localList = getLocalUsers();
+        const refIndex = localList.findIndex(u => Number(u.telegram_id) === refTgId);
+        if (refIndex >= 0) {
+          localList[refIndex].matcha_sparks = (localList[refIndex].matcha_sparks ?? 15) + 10;
+          localList[refIndex].priorityPoints = (localList[refIndex].priorityPoints ?? 0) + 5;
+          saveLocalUsers(localList);
+        }
+      } catch (err) {
+        console.warn("Failed to credit referrer in LocalStorage:", err);
+      }
+    }
+  }
+
   try {
     const { data, error } = await supabase
       .from('users')
@@ -141,6 +193,10 @@ export const onboardUser = async (userData: {
       ref_code: refCode,
       matcha_sparks: userData.matcha_sparks ?? (existingIdx >= 0 ? (localUsers[existingIdx].matcha_sparks ?? 15) : 15),
       voice_bio: userData.voice_bio ?? (existingIdx >= 0 ? localUsers[existingIdx].voice_bio : undefined),
+      ghost_mode: userData.ghost_mode ?? (existingIdx >= 0 ? localUsers[existingIdx].ghost_mode : false),
+      ambient_pushes: userData.ambient_pushes ?? (existingIdx >= 0 ? localUsers[existingIdx].ambient_pushes : true),
+      priorityPoints: userData.priorityPoints ?? (existingIdx >= 0 ? localUsers[existingIdx].priorityPoints : 0),
+      referred_by: userData.referred_by ?? (existingIdx >= 0 ? localUsers[existingIdx].referred_by : undefined)
     };
 
     if (existingIdx >= 0) {
@@ -356,8 +412,11 @@ export const getProfiles = async (
       throw usersError || new Error("No users found");
     }
 
+    // Filter out users in Ghost Mode
+    const nonGhostUsers = users.filter(user => user.ghost_mode !== true);
+
     // Client-side scoring for exact intersection and sorting (as requested by the algorithm)
-    const scored = users.map(user => {
+    const scored = nonGhostUsers.map(user => {
       const intersection = (user.tags || []).filter((t: string) => currentTags.includes(t));
       return {
         user,
@@ -384,8 +443,8 @@ export const getProfiles = async (
       .filter(s => s.swiper_id === currentUserId)
       .map(s => s.swiped_id);
 
-    // Filter out self and swiped candidates
-    const matchables = localUsers.filter(u => u.id !== currentUserId && !swipedTargetIds.includes(u.id));
+    // Filter out self, swiped candidates, and users in Ghost Mode
+    const matchables = localUsers.filter(u => u.id !== currentUserId && !swipedTargetIds.includes(u.id) && u.ghost_mode !== true);
 
     // Score based on tag overlaps
     const scored = matchables.map(user => {
@@ -400,6 +459,22 @@ export const getProfiles = async (
 
     scored.sort((a, b) => b.score - a.score);
     return scored.map(item => item.user);
+  }
+};
+
+// 3b. Real referrals retrieval
+export const getUserReferrals = async (telegramId: number): Promise<SupabaseUser[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('referred_by', `REF_${telegramId}`);
+      
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    const localUsers = getLocalUsers();
+    return localUsers.filter(u => u.referred_by === `REF_${telegramId}` || u.referred_by === String(telegramId));
   }
 };
 

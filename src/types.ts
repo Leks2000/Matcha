@@ -41,6 +41,8 @@ export interface CurrentUser {
   photo_url?: string;
   matcha_sparks?: number;
   voice_bio?: string; // base64 encoded audio or data-url
+  ghost_mode?: boolean;
+  ambient_pushes?: boolean;
 }
 
 export interface SwipeAction {

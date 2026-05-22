@@ -15,6 +15,7 @@ interface TelegramFrameProps {
   onLanguageToggle?: () => void;
   appLanguage?: 'en' | 'ru';
   t?: any;
+  onRefillSparks?: () => void;
 }
 
 export default function TelegramFrame({
@@ -28,7 +29,8 @@ export default function TelegramFrame({
   onInviteAndRefer,
   onLanguageToggle,
   appLanguage = 'en',
-  t
+  t,
+  onRefillSparks
 }: TelegramFrameProps) {
   const [showSparksModal, setShowSparksModal] = useState(false);
 
@@ -40,7 +42,7 @@ export default function TelegramFrame({
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0] text-[#1A1A1A] flex items-center justify-center font-sans overflow-x-hidden relative md:p-6 lg:p-12">
+    <div className="h-screen w-full bg-[#F5F5F0] text-[#1A1A1A] flex items-center justify-center font-sans overflow-hidden relative">
       
       {/* Light sage-green fluid brand glows - Animated slow ocean float loops */}
       <motion.div
@@ -72,8 +74,8 @@ export default function TelegramFrame({
         className="absolute bottom-0 left-1/4 w-[420px] h-[420px] bg-[#C8E6D4]/30 blur-[140px] rounded-full pointer-events-none z-0"
       />
 
-      {/* Main Core Viewport: Centered Smartphone app mockup on BOTH Mobile and PC for 100% exact design, scroll, and feature parity */}
-      <div className="w-[94%] max-w-[430px] h-[800px] max-h-[94vh] bg-[#F5F5F0] relative z-10 flex flex-col shadow-[0_24px_80px_rgba(26,122,85,0.12)] border border-[#1A7A55]/10 rounded-[38px] overflow-hidden transition-all duration-300">
+      {/* Main Core Viewport: Full Edge-To-Edge Immersive Mini-App Content Layout without rounded Mock borders */}
+      <div className="w-full h-full max-h-screen bg-[#F5F5F0] relative z-10 flex flex-col overflow-hidden transition-all duration-300">
         
         {/* Workspace Mini Applet Body */}
         <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-[#F5F5F0]">
@@ -91,7 +93,7 @@ export default function TelegramFrame({
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setShowSparksModal(true)}
-                  className="flex items-center gap-1.5 cursor-pointer text-[#D19200] group select-none relative bg-amber-500/5 hover:bg-amber-500/10 px-2 py-1 rounded-full border border-amber-500/10 transition"
+                  className="flex items-center gap-1.5 cursor-pointer text-[#D19200] group select-none relative bg-amber-500/5 hover:bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/10 transition"
                   title="Your Matcha Sparks balance"
                 >
                   <Zap className="w-3.5 h-3.5 stroke-[2.5] text-[#D19200] fill-amber-300/20 group-hover:fill-amber-400 group-hover:text-amber-600 transition duration-300 animate-[pulse_2s_infinite]" />
@@ -101,12 +103,7 @@ export default function TelegramFrame({
                 </motion.div>
               )}
               
-              <div className="flex items-center gap-1 font-mono text-[10.5px] font-black uppercase text-orange-600 select-none bg-orange-500/5 px-2 py-1 rounded-full border border-orange-500/5">
-                <Flame className="w-3.5 h-3.5 fill-orange-500/10" />
-                <span>{streakDays}D</span>
-              </div>
-              
-              <span className="text-[10px] font-mono text-[#00A876] font-extrabold uppercase tracking-widest bg-[#E8F5EE] px-2 py-0.5 rounded-md hidden sm:inline-block">TMA INSTANT</span>
+              <span className="text-[10px] font-mono text-[#00A876] font-extrabold uppercase tracking-widest bg-[#E8F5EE] px-2 py-1 rounded-md">TMA INSTANT</span>
             </div>
           </header>
 
@@ -168,12 +165,25 @@ export default function TelegramFrame({
                 </div>
               </div>
 
-              <button
-                onClick={() => setShowSparksModal(false)}
-                className="w-full h-[44px] rounded-xl bg-[#00C896] hover:bg-[#00B285] text-white font-extrabold text-xs uppercase tracking-wider flex items-center justify-center cursor-pointer transition duration-200 border-none shadow-sm"
-              >
-                Закрыть / Close
-              </button>
+              <div className="flex gap-2 w-full">
+                {onRefillSparks && (
+                  <button
+                    onClick={() => {
+                      onRefillSparks();
+                      setShowSparksModal(false);
+                    }}
+                    className="flex-1 h-[44px] rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-extrabold text-[11px] uppercase tracking-wider flex items-center justify-center cursor-pointer transition duration-200 border-none shadow-sm"
+                  >
+                     🔋 RECHARGE +15
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowSparksModal(false)}
+                  className="flex-1 h-[44px] rounded-xl bg-[#00C896] hover:bg-[#00B285] text-white font-extrabold text-xs uppercase tracking-wider flex items-center justify-center cursor-pointer transition duration-200 border-none shadow-sm"
+                >
+                  {appLanguage === 'ru' ? 'Закрыть' : 'Close'}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

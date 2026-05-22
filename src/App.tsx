@@ -23,10 +23,11 @@ import {
   Camera,
   Upload,
   Plus,
-  Globe
+  Globe,
+  X
 } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
-import { getCurrentUser, resetUserSwipes, onboardUser, generateFactsFromChat, compressAndResizeImage } from './lib/api';
+import { getCurrentUser, resetUserSwipes, onboardUser, generateFactsFromChat, compressAndResizeImage, getUserReferrals } from './lib/api';
 
 export const TRANSLATIONS = {
   en: {
@@ -153,6 +154,21 @@ export default function App() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [inviteFeedback, setInviteFeedback] = useState("");
 
+  // Referral System States
+  const [referrals, setReferrals] = useState<{ id: string; name: string; role: string; photo_url: string; status: string }[]>(() => [
+    { id: 'ref1', name: 'Kirill', role: 'Meme Curator', photo_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150&auto=format&fit=crop', status: 'Active +5 Boost' },
+    { id: 'ref2', name: 'Sofia', role: 'Digital Nomad', photo_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150&auto=format&fit=crop', status: 'Active +5 Boost' }
+  ]);
+
+  const [referralPool, setReferralPool] = useState<{ name: string; role: string; photo_url: string }[]>([
+    { name: 'Diana', role: 'Growth Hacker', photo_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop' },
+    { name: 'Max', role: 'Crypto Architect', photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150&auto=format&fit=crop' },
+    { name: 'Alice', role: 'UI/UX Craftswoman', photo_url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=150&auto=format&fit=crop' }
+  ]);
+
+  // Ambient Pushes Notification Banner State
+  const [ambientAlert, setAmbientAlert] = useState<{ title: string; body: string } | null>(null);
+
   // Automatic localized language state (X-style translator)
   const [appLanguage, setAppLanguage] = useState<'en' | 'ru'>(() => {
     try {
@@ -178,6 +194,27 @@ export default function App() {
     setAmbientPushes(prev => {
       const next = !prev;
       localStorage.setItem('matcha_ambient_pushes', String(next));
+      setCurrentUser(curr => {
+        if (!curr) return null;
+        const updated = { ...curr, ambient_pushes: next };
+        onboardUser({
+          telegram_id: curr.telegram_id,
+          username: curr.username,
+          name: profileName || curr.name,
+          age: profileAge || curr.age,
+          role: curr.role,
+          tags: curr.tags,
+          ai_facts: profileFacts.length ? profileFacts : curr.ai_facts,
+          bio: profileBio || curr.bio,
+          photo_url: profilePhotoUrl || curr.photo_url,
+          voice_bio: localVoiceBio || curr.voice_bio,
+          ghost_mode: ghostMode,
+          ambient_pushes: next,
+          priorityPoints: curr.priorityPoints,
+          referred_by: curr.referred_by
+        }).catch(err => console.error(err));
+        return updated;
+      });
       return next;
     });
   };
@@ -187,6 +224,27 @@ export default function App() {
     setGhostMode(prev => {
       const next = !prev;
       localStorage.setItem('matcha_ghost_mode', String(next));
+      setCurrentUser(curr => {
+        if (!curr) return null;
+        const updated = { ...curr, ghost_mode: next };
+        onboardUser({
+          telegram_id: curr.telegram_id,
+          username: curr.username,
+          name: profileName || curr.name,
+          age: profileAge || curr.age,
+          role: curr.role,
+          tags: curr.tags,
+          ai_facts: profileFacts.length ? profileFacts : curr.ai_facts,
+          bio: profileBio || curr.bio,
+          photo_url: profilePhotoUrl || curr.photo_url,
+          voice_bio: localVoiceBio || curr.voice_bio,
+          ghost_mode: next,
+          ambient_pushes: ambientPushes,
+          priorityPoints: curr.priorityPoints,
+          referred_by: curr.referred_by
+        }).catch(err => console.error(err));
+        return updated;
+      });
       return next;
     });
   };
@@ -199,6 +257,26 @@ export default function App() {
       return next;
     });
   };
+
+  // Synchronize real referrals from Supabase or LocalStorage
+  useEffect(() => {
+    if (!currentUser?.telegram_id) return;
+    getUserReferrals(currentUser.telegram_id).then(realRefs => {
+      if (realRefs && realRefs.length > 0) {
+        const formatted = realRefs.map(u => ({
+          id: u.id,
+          name: u.name,
+          role: u.role,
+          photo_url: u.photo_url || "",
+          status: appLanguage === 'ru' ? 'Активен +5' : 'Active +5 Boost'
+        }));
+        setReferrals(prev => {
+          const filteredPrev = prev.filter(p => !formatted.some(f => f.name === p.name || f.id === p.id));
+          return [...formatted, ...filteredPrev];
+        });
+      }
+    }).catch(err => console.error("Error loading referrals:", err));
+  }, [currentUser?.telegram_id, appLanguage]);
 
   // Top-level editable profile states
   const [profileName, setProfileName] = useState("");
@@ -494,9 +572,11 @@ export default function App() {
           priorityPoints: 0,
           age: user.age || 22,
           bio: user.bio || "Exploring matcha vibes and meeting cool young creators.",
-          photo_url: user.photo_url || tgPhotoUrl || "",
+          photo_url: user.photo_url || tgPhotoUrl || `https://api.dicebear.com/7.x/lorelei/svg?seed=${encodeURIComponent(user.name || tgFirstName || 'MatchaUser')}`,
           matcha_sparks: user.matcha_sparks ?? 15,
-          voice_bio: user.voice_bio || ""
+          voice_bio: user.voice_bio || "",
+          ghost_mode: localStorage.getItem('matcha_ghost_mode') === 'true',
+          ambient_pushes: localStorage.getItem('matcha_ambient_pushes') === 'true'
         };
         setCurrentUser(loadedUser);
         setProfileName(loadedUser.name);
@@ -522,9 +602,11 @@ export default function App() {
           priorityPoints: 0,
           age: 22,
           bio: "Exploring matcha vibes and meeting cool young creators.",
-          photo_url: tgPhotoUrl || "",
+          photo_url: tgPhotoUrl || `https://api.dicebear.com/7.x/lorelei/svg?seed=${encodeURIComponent(tgFirstName || 'MatchaUser')}`,
           matcha_sparks: 15,
-          voice_bio: ""
+          voice_bio: "",
+          ghost_mode: localStorage.getItem('matcha_ghost_mode') === 'true',
+          ambient_pushes: localStorage.getItem('matcha_ambient_pushes') === 'true'
         };
         setCurrentUser(starterUser);
         setProfileName(starterUser.name);
@@ -542,6 +624,53 @@ export default function App() {
   useEffect(() => {
     fetchCurrentUserAndConfig();
   }, []);
+
+  // Automated background simulation of Ambient Pushes inside the Mini App viewport
+  useEffect(() => {
+    if (!ambientPushes) return;
+
+    const enPushPool = [
+      { title: "💬 New Match Candidate!", body: "Elena is near your wave frequency! Vibe overlap is 9.5." },
+      { title: "🔥 Streak Preserved", body: "Matches today is growing! Keep on matching nodes to increase priority." },
+      { title: "⚡ AI Cosmic Match", body: "Sofia shared an interest in #Coffee and requested a mutual deep chat." },
+      { title: "🍵 Matcha Bar Active", body: "Daily fresh profiles are ready for you. Check your discover sweep." }
+    ];
+
+    const ruPushPool = [
+      { title: "💬 Новая анкета!", body: "Елена прямо сейчас на вашей частоте! Вайб сошелся на 9.5." },
+      { title: "🔥 Стрик сохранен", body: "Ваши ежедневные матчи растут! Продолжайте искать точки пересечения." },
+      { title: "⚡ Космический AI Подбор", body: "София разделяет вашу страсть к #Кофе и отправила вам запрос." },
+      { title: "🍵 Свежая матча ждет", body: "Новые умы добавлены на радар. Нажмите Свайп, чтобы оценить." }
+    ];
+
+    const showAlert = () => {
+      const activePool = appLanguage === 'ru' ? ruPushPool : enPushPool;
+      const idx = Math.floor(Math.random() * activePool.length);
+      const selected = activePool[idx];
+      
+      try { WebApp.HapticFeedback.notificationOccurred('success'); } catch(e){}
+      setAmbientAlert({
+        title: selected.title,
+        body: selected.body
+      });
+
+      // Clear after 6 seconds
+      setTimeout(() => {
+        setAmbientAlert(null);
+      }, 6000);
+    };
+
+    // Trigger first simulation push 5 seconds in
+    const initialTimer = setTimeout(showAlert, 5000);
+
+    // Keep triggering every 25 seconds
+    const interval = setInterval(showAlert, 25000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
+  }, [ambientPushes, appLanguage]);
 
   const handleOnboardingComplete = (onboardedUser: CurrentUser) => {
     setCurrentUser(onboardedUser);
@@ -581,25 +710,24 @@ export default function App() {
   // Grow feature: Invite referral trigger
   const handleInviteAndRefer = async () => {
     if (!currentUser) return;
-    const refUrl = `t.me/matchabot?start=REF_${currentUser.telegram_id}`;
+    const refUrl = `https://t.me/matchabot?start=REF_${currentUser.telegram_id}`;
     
     // Copy the real link safely to clipboard
     try {
       await navigator.clipboard.writeText(refUrl);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
+      try { WebApp.HapticFeedback.notificationOccurred('success'); } catch(e){}
     } catch (err) {
       console.error("Clipboard copy failed:", err);
     }
 
-    // Direct client simulation of awarding dynamic invite boosts points & Matcha Sparks
-    setInviteFeedback("+10 Sparks & +5 Priority Boost Activated!");
-    setCurrentUser(prev => prev ? {
-      ...prev,
-      priorityPoints: (prev.priorityPoints || 0) + 5,
-      matcha_sparks: (prev.matcha_sparks ?? 15) + 10
-    } : null);
-    setTimeout(() => setInviteFeedback(""), 3000);
+    const successMsg = appLanguage === 'ru'
+      ? "🔗 Реферальная ссылка скопирована в буфер! Бонусы начисляются при регистрации новых создателей."
+      : "🔗 Referral link copied to clipboard! Boosts are credited upon actual registration of new founders.";
+    
+    setInviteFeedback(successMsg);
+    setTimeout(() => setInviteFeedback(""), 4500);
   };
 
   const handleSaveProfile = async () => {
@@ -706,6 +834,13 @@ export default function App() {
       onLanguageToggle={toggleAppLanguage}
       appLanguage={appLanguage}
       t={t}
+      onRefillSparks={() => {
+        handleUpdateCurrentUser({
+          ...currentUser,
+          matcha_sparks: (currentUser.matcha_sparks ?? 15) + 15
+        });
+        try { WebApp.HapticFeedback.notificationOccurred('success'); } catch(e){}
+      }}
     >
       {!hasOnboarded ? (
         <OnboardingView 
@@ -715,8 +850,42 @@ export default function App() {
           appLanguage={appLanguage}
         />
       ) : (
-        <div className="flex-1 flex flex-col justify-between h-full bg-[#F5F5F0] overflow-hidden relative" id="mobile-applet-mount">
+        <div className="flex-1 flex flex-col justify-between h-full bg-[#F5F5F0] overflow-hidden relative font-sans" id="mobile-applet-mount">
           
+          {/* Authentic sliding in-app ambient push notification alert */}
+          <AnimatePresence>
+            {ambientAlert && (
+              <motion.div
+                initial={{ y: -70, opacity: 0, scale: 0.95 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                exit={{ y: -70, opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 220, damping: 20 }}
+                className="absolute top-2.5 left-3.5 right-3.5 z-[60] bg-white border border-[#00C896]/30 shadow-[0_12px_32px_rgba(26,122,85,0.12)] p-3.5 rounded-2xl flex items-start gap-3 select-none cursor-pointer active:scale-[0.98] transition-all backdrop-blur-md"
+                onClick={() => setAmbientAlert(null)}
+              >
+                <div className="w-9 h-9 rounded-full bg-[#00C896]/15 flex items-center justify-center text-[#1A7A55] text-lg shrink-0 border border-[#00C896]/20">
+                  🍵
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <h4 className="text-[12px] font-black tracking-tight text-[#1A7A55] uppercase font-mono leading-none flex items-center gap-1.5">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#00C896] animate-ping" />
+                    {ambientAlert.title}
+                  </h4>
+                  <p className="text-[11px] text-[#222] font-black leading-snug mt-1.5">{ambientAlert.body}</p>
+                </div>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAmbientAlert(null);
+                  }}
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-zinc-400 hover:text-zinc-800 transition shrink-0 bg-neutral-100 hover:bg-neutral-200 cursor-pointer self-center"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Main Content Pane */}
           <div className={`flex-1 px-4 py-4 flex flex-col scrollbar-thin ${mobileTab === 'discover' ? 'overflow-hidden' : 'overflow-y-auto pb-12'}`}>
             <AnimatePresence mode="wait">
@@ -1056,11 +1225,42 @@ export default function App() {
                     </div>
 
                     {inviteFeedback && (
-                      <div className="bg-[#1A1A1A] text-white py-1.5 px-3 rounded-xl text-[10px] font-bold uppercase tracking-wider text-center animate-bounce">
+                      <div className="bg-[#00C896]/10 border border-[#00C896]/25 text-[#1A7A55] py-2 px-3.5 rounded-xl text-[10px] font-black uppercase tracking-wider text-center animate-bounce flex items-center justify-center gap-1.5 shadow-2xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#00C896] animate-pulse" />
                         {inviteFeedback}
                       </div>
                     )}
                   </div>
+
+                  {/* Referenced Founders List Widget */}
+                  {referrals.length > 0 && (
+                    <div className="space-y-2" id="referrals-list-widget">
+                      <label className="text-[10px] font-bold tracking-[1.5px] uppercase text-[#1A7A55] block">
+                        {appLanguage === 'ru' ? '// ПРИГЛАШЕННЫЕ СОЗДАТЕЛИ' : '// REFERENCED FOUNDERS'}
+                      </label>
+                      <GlassCard className="border border-black/[0.04] p-3 rounded-[24px] divide-y divide-black/[0.04] bg-white text-neutral-800">
+                        {referrals.map((ref) => (
+                          <div key={ref.id} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={ref.photo_url}
+                                alt={ref.name}
+                                className="w-8 h-8 rounded-full border border-black/[0.05] object-cover shrink-0"
+                                referrerPolicy="no-referrer"
+                              />
+                              <div className="min-w-0">
+                                <h4 className="text-[12px] font-black text-[#1A1A1A] leading-tight truncate">{ref.name}</h4>
+                                <p className="text-[10px] text-[#6B7280] font-bold leading-none mt-0.5 truncate">{ref.role}</p>
+                              </div>
+                            </div>
+                            <span className="text-[9px] font-mono font-extrabold text-[#00C896] bg-[#00C896]/10 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 select-none">
+                              {appLanguage === 'ru' ? 'Активен +5' : 'Active +5'}
+                            </span>
+                          </div>
+                        ))}
+                      </GlassCard>
+                    </div>
+                  )}
 
                   {/* Energy tags */}
                   <div className="space-y-2">
@@ -1111,28 +1311,17 @@ export default function App() {
 
                     <GlassCard className="overflow-hidden border border-black/[0.04] rounded-2xl">
                       <div className="divide-y divide-black/[0.03]">
-                        {/* Interactive App Language Swapper */}
-                        <div
-                          onClick={toggleAppLanguage}
-                          className="h-[48px] px-4 flex items-center justify-between hover:bg-black/[0.01] cursor-pointer transition duration-150"
-                        >
-                          <div className="flex items-center gap-3">
-                            <Globe className="h-4.5 w-4.5 text-[#00C896]" />
-                            <span className="text-[13px] font-extrabold text-[#1A1A1A]">
-                              {appLanguage === 'ru' ? 'Язык приложения' : 'App Language'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-black uppercase text-[#1A7A55] bg-[#00C896]/10 px-2 py-0.5 rounded-md">
-                              {appLanguage === 'en' ? 'EN 🇺🇸' : 'RU 🇷🇺'}
-                            </span>
-                            <ChevronRight className="h-4 w-4 text-zinc-300" />
-                          </div>
-                        </div>
-
                         {[
-                          { id: 'notif', name: t.ambientPushes, icon: Bell, checked: ambientPushes, action: toggleAmbientPushes },
-                          { id: 'privacy', name: t.ghostMode, icon: Shield, checked: ghostMode, action: toggleGhostMode }
+                          { id: 'notif', name: t.ambientPushes, icon: Bell, checked: ambientPushes, action: toggleAmbientPushes, isToggle: true },
+                          { id: 'privacy', name: t.ghostMode, icon: Shield, checked: ghostMode, action: toggleGhostMode, isToggle: true },
+                          { 
+                            id: 'lang', 
+                            name: appLanguage === 'ru' ? 'Язык приложения' : 'App Language', 
+                            icon: Globe, 
+                            action: toggleAppLanguage, 
+                            isToggle: false,
+                            badge: appLanguage === 'ru' ? 'RU ru' : 'EN en'
+                          }
                         ].map((item) => (
                           <div
                             key={item.id}
@@ -1146,12 +1335,21 @@ export default function App() {
                               </span>
                             </div>
                             
-                            {/* Gorgeous iOS-style Green Toggle Switch */}
-                            <div className={`w-10 h-6 flex items-center rounded-full p-0.5 transition-colors duration-200 ${item.checked ? 'bg-[#00C896]' : 'bg-zinc-200'}`}>
-                              <div
-                                className={`bg-white w-5 h-5 rounded-full shadow-sm transform duration-200 ease-in-out ${item.checked ? 'translate-x-4' : 'translate-x-0'}`}
-                              />
-                            </div>
+                            {item.isToggle ? (
+                              <div className={`w-10 h-6 flex items-center rounded-full p-0.5 transition-colors duration-200 ${item.checked ? 'bg-[#00C896]' : 'bg-zinc-200'}`}>
+                                <div
+                                  className={`bg-white w-5 h-5 rounded-full shadow-sm transform duration-200 ease-in-out ${item.checked ? 'translate-x-4' : 'translate-x-0'}`}
+                                />
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1 font-mono text-[10px] font-black tracking-wider text-[#00C896] bg-[#00C896]/10 px-2.5 py-1 rounded-full select-none">
+                                  <span>{item.badge?.split(' ')[0]}</span>
+                                  <span className="text-[7.5px] opacity-75">{item.badge?.split(' ')[1]}</span>
+                                </div>
+                                <ChevronRight className="h-4 w-4 text-[#9CA3AF]" />
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
