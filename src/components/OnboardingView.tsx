@@ -35,6 +35,112 @@ const AVAILABLE_INTERESTS = [
   "Deep Talks"
 ];
 
+const getInstantLocalFacts = (role: string, tags: string[]): string[] => {
+  const tagFactMap: Record<string, string[]> = {
+    "AI & Automation": [
+      "has 4 active AI tool subscriptions",
+      "secretly believes AI will build their next startup",
+      "prompts AI to write their daily schedule"
+    ],
+    "Indie Hacking": [
+      "has 10 unfinished projects in local folder",
+      "spends hours choosing domain names for side ideas",
+      "can explain the startup bootstrap lore in 30s"
+    ],
+    "Design": [
+      "would argue endlessly about Tailwind versus CSS",
+      "zooms to 800% to check if pixels align",
+      "absolutely hates default purple gradients"
+    ],
+    "Content Creation": [
+      "knows exactly when a meme format is dead",
+      "prefers texting with memes over words",
+      "has folders of drafts that will never launch"
+    ],
+    "Startups": [
+      "dreams of seed rounds instead of counting sheep",
+      "ready to live on espresso, matcha, and pure hype",
+      "pitch-decks everyday life decisions to friends"
+    ],
+    "Gaming": [
+      "terminally online and speaks mostly in sarcasm",
+      "stays up until 3AM 'for just one last game'",
+      "builds elaborate in-game bases instead of sleeping"
+    ],
+    "Crypto": [
+      "lost 80% on dogecoins and bought right back in",
+      "checks crypto price charts every 15 minutes",
+      "has cold storage keys hidden under their bed"
+    ],
+    "Music": [
+      "buys rare vinyl records instead of grocery limits",
+      "creates oddly specific playlists for dog walks",
+      "has a digital synthesizer they don't play"
+    ],
+    "Shitposting": [
+      "has a folder of 4,000 cat memes, ready to share",
+      "post-ironic humor levels are completely off charts",
+      "communicates in custom sticker packages"
+    ],
+    "Late Night Coding": [
+      "regularly stays up until 3AM exploring code",
+      "physically cannot sleep without a podcast on",
+      "drinks espresso late at night with chill music"
+    ],
+    "Coffee": [
+      "thinks tea is warm leaf juice and prefers espresso",
+      "spent too much money on a fancy coffee grinder",
+      "physically cannot start the day without fresh brew"
+    ],
+    "Deep Talks": [
+      "convinced that lavender tea cures low battery",
+      "always ready for deep midnight talks in hubs",
+      "is deeply afraid of voice messages longer than 30s"
+    ]
+  };
+
+  const pool: string[] = [];
+  tags.forEach(t => {
+    const list = tagFactMap[t];
+    if (list) {
+      pool.push(...list);
+    }
+  });
+
+  const lowRole = role.toLowerCase();
+  if (lowRole.includes('student') || lowRole.includes('студент')) {
+    pool.push(
+      "calculates min pass grade on exam morning",
+      "survives on cheap matcha and pure deadline adrenaline"
+    );
+  } else if (lowRole.includes('work') || lowRole.includes('работаю')) {
+    pool.push(
+      "mutes corporate team channels with extreme joy",
+      "counts hours remaining till Friday at 9AM Monday"
+    );
+  } else if (lowRole.includes('found') || lowRole.includes('build') || lowRole.includes('creator')) {
+    pool.push(
+      "checks product hunt launch page obsessively",
+      "has 5 active browser windows with 20 tabs each"
+    );
+  }
+
+  const fallbacks = [
+    "can drink matcha at any hour of day",
+    "prefers texting with memes over actual language",
+    "never replies to texts in under 12 hours",
+    "has custom stickers for every friend group situation",
+    "physically cannot sleep without a podcast on",
+    "always ready for spontaneous matchas in local hubs"
+  ];
+
+  pool.push(...fallbacks);
+
+  const unique = Array.from(new Set(pool));
+  const shuffled = [...unique].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, 3);
+};
+
 export default function OnboardingView({ telegramId, telegramUsername, onComplete }: OnboardingViewProps) {
   const [step, setStep] = useState(1);
   const [name, setName] = useState("Jason");
@@ -132,11 +238,8 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
       setAiFacts(facts);
     } catch (err) {
       console.error(err);
-      setAiFacts([
-        "regularly stays up until 3AM exploring things",
-        "can drink matcha at any hour of day",
-        "prefers texting with memes over actual language"
-      ]);
+      const activeRole = customRoleText.trim() ? customRoleText : role;
+      setAiFacts(getInstantLocalFacts(activeRole, selectedTags));
     } finally {
       setFactsLoading(false);
     }
@@ -184,6 +287,12 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
 
   const handleTransitionToFacts = () => {
     if (selectedTags.length < 2) return;
+    
+    // Speculatively generate facts instantly for instantaneous user transitions (0ms loading lag!)
+    const activeRole = customRoleText.trim() ? customRoleText : role;
+    const instantFacts = getInstantLocalFacts(activeRole, selectedTags);
+    setAiFacts(instantFacts);
+    
     setStep(3);
   };
 
@@ -236,36 +345,50 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
   const handleSubmit = async () => {
     setIsLoading(true);
     const finalRole = customRoleText.trim() ? customRoleText : role;
+    
+    // Create immediate high-fidelity local user payload for instantaneous transition
+    const localUserObj = {
+      id: `user_${telegramId}`,
+      telegram_id: telegramId,
+      username: telegramUsername,
+      name,
+      age,
+      role: finalRole,
+      tags: selectedTags,
+      ai_facts: aiFacts,
+      photo_url: photoUrl,
+      matcha_sparks: 15,
+      streakDays: 14,
+      matchesToday: 8,
+      isPremium: false,
+      priorityPoints: 0,
+      ref_code: `REF_${telegramId}`
+    };
+
+    // Trigger success haptic vibration instantly if available
     try {
-      const user = await onboardUser({
-        telegram_id: telegramId,
-        username: telegramUsername,
-        name,
-        age,
-        role: finalRole,
-        tags: selectedTags,
-        ai_facts: aiFacts,
-        photo_url: photoUrl
-      });
-      if (user) {
-        setTimeout(() => {
-          onComplete({
-            ...user,
-            age: age,
-            streakDays: 14,
-            matchesToday: 8,
-            isPremium: false,
-            priorityPoints: 0
-          });
-          setIsLoading(false);
-        }, 600);
-      } else {
-        setIsLoading(false);
-      }
-    } catch (err) {
-      console.error(err);
-      setIsLoading(false);
-    }
+      WebApp.HapticFeedback.notificationOccurred('success');
+    } catch (e) {}
+
+    // Complete transition immediately to bypass Supabase latency completely!
+    onComplete(localUserObj);
+    setIsLoading(false);
+
+    // Save to server database asynchronously in the background
+    onboardUser({
+      telegram_id: telegramId,
+      username: telegramUsername,
+      name,
+      age,
+      role: finalRole,
+      tags: selectedTags,
+      ai_facts: aiFacts,
+      photo_url: photoUrl
+    }).then((serverUser) => {
+      console.log("Onboarding synced successfully in background:", serverUser);
+    }).catch((err) => {
+      console.warn("Background onboarding sync caught error, continued offline beautifully:", err);
+    });
   };
 
   return (

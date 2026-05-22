@@ -358,6 +358,25 @@ export default function DashboardView({
     }
   }, [currentUser?.id]);
 
+  // Translate vertical trackpad/wheel scroll on header into horizontal scroll for premium desktop experience
+  useEffect(() => {
+    const el = filterScrollRef.current;
+    if (!el) return;
+    const handleWheel = (e: WheelEvent) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      } else if (e.deltaX !== 0) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaX;
+      }
+    };
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
+
   // Handle server-seed selection or offline match filters based on the selected role capsule 
   const getFilteredProfiles = () => {
     if (selectedRoleFilter === 'All') return profiles;
@@ -375,12 +394,96 @@ export default function DashboardView({
       if (selectedRoleFilter === 'Creators') {
         return role.includes('creator') || role.includes('dj') || role.includes('curator') || role.includes('specialist') || role.includes('writer') || role.includes('nomad');
       }
+      if (selectedRoleFilter === 'Product Managers') {
+        return role.includes('product') || role.includes('pm') || role.includes('manager') || role.includes('lead');
+      }
+      if (selectedRoleFilter === 'Marketers') {
+        return role.includes('market') || role.includes('smm') || role.includes('growth') || role.includes('pr') || role.includes('seo') || role.includes('acquisition');
+      }
+      if (selectedRoleFilter === 'AI Specialists') {
+        return role.includes('ai') || role.includes('ml') || role.includes('prompt') || role.includes('model') || role.includes('neural') || role.includes('gpt') || role.includes('llama');
+      }
+      if (selectedRoleFilter === 'Investors') {
+        return role.includes('invest') || role.includes('vc') || role.includes('angel') || role.includes('capital') || role.includes('fund');
+      }
+      if (selectedRoleFilter === 'BizDev & Sales') {
+        return role.includes('sale') || role.includes('bizdev') || role.includes('representative') || role.includes('partnership') || role.includes('deal') || role.includes('account') || role.includes('business dev');
+      }
+      if (selectedRoleFilter === 'Operations & QA') {
+        return role.includes('ops') || role.includes('operations') || role.includes('qa') || role.includes('testing') || role.includes('tester') || role.includes('support') || role.includes('hr') || role.includes('recruiter');
+      }
+      if (selectedRoleFilter === 'Students & Interns') {
+        return role.includes('student') || role.includes('intern') || role.includes('university') || role.includes('research') || role.includes('learn');
+      }
       return false;
     });
   };
 
   const filteredProfiles = getFilteredProfiles();
   const activeProfile = filteredProfiles[currentIndex];
+
+  // Keyboard arrow keys and spacebar shortcut navigation for premium desktop experience
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Avoid interference when the user is focused on textual input elements
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.getAttribute('contenteditable') === 'true')) {
+        return;
+      }
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        executeSwipeWithHaptics('left');
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        executeSwipeWithHaptics('right');
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        setCardMode(prev => prev === 'facts' ? 'radar' : 'facts');
+        try { WebApp.HapticFeedback.impactOccurred('light'); } catch (err) {}
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [currentIndex, activeProfile, filteredProfiles, currentUser]);
+
+  // Support wheel-based horizontal trackpad gestures to swipe left/right on active profile card
+  useEffect(() => {
+    const el = cardWrapperRef.current;
+    if (!el) return;
+    
+    let cumulativeDeltaX = 0;
+    let debounceTimer: any = null;
+
+    const handleCardWheel = (e: WheelEvent) => {
+      // Only trigger horizontal swipe when scroll is noticeably horizontal
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        e.preventDefault();
+        cumulativeDeltaX += e.deltaX;
+        
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          cumulativeDeltaX = 0;
+        }, 200);
+
+        if (cumulativeDeltaX > 120) {
+          executeSwipeWithHaptics('right'); // swipe right for positive horizontal scroll
+          cumulativeDeltaX = 0;
+        } else if (cumulativeDeltaX < -120) {
+          executeSwipeWithHaptics('left'); // swipe left for negative horizontal scroll
+          cumulativeDeltaX = 0;
+        }
+      }
+    };
+    
+    el.addEventListener('wheel', handleCardWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleCardWheel);
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [currentIndex, activeProfile, filteredProfiles, currentUser]);
 
   // Automatically translate active profile if language matches requirements
   useEffect(() => {
@@ -583,7 +686,7 @@ export default function DashboardView({
             isDragScrollingHeader ? 'cursor-grabbing' : 'cursor-grab'
           }`}
         >
-          {['All', 'Developers', 'Designers', 'Founders', 'Creators'].map((roleOpt) => {
+          {['All', 'Developers', 'Designers', 'Founders', 'Creators', 'Product Managers', 'Marketers', 'AI Specialists', 'Investors', 'BizDev & Sales', 'Operations & QA', 'Students & Interns'].map((roleOpt) => {
             const isSel = selectedRoleFilter === roleOpt;
             return (
               <motion.button

@@ -81,7 +81,7 @@ export default function TelegramFrame({
         </header>
 
         {/* Core content stream */}
-        <div className="flex-1 flex flex-col overflow-hidden relative">
+        <div className="flex-1 flex flex-col overflow-y-auto md:overflow-y-auto overflow-x-hidden relative scrollbar-thin">
           {children}
         </div>
       </div>

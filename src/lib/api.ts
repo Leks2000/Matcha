@@ -229,6 +229,66 @@ const SEED_PROFILES = [
     ],
     bio: "Let's grab a matcha and discuss if aliens actually like our pop music.",
     photo_url: "https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=300&auto=format&fit=crop"
+  },
+  {
+    telegram_id: 9996,
+    username: "artur_pm",
+    name: "Artur",
+    age: 26,
+    role: "Product Manager",
+    tags: ["Startups", "Deep Talks", "Late Night Coding", "Coffee"],
+    ai_facts: [
+      "has a Notion template for their romantic life",
+      "sends follow-ups to casual conversations",
+      "drinks double espressos back-to-back"
+    ],
+    bio: "Obsessed with backlog optimization, side projects, and craft beer.",
+    photo_url: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=300&auto=format&fit=crop"
+  },
+  {
+    telegram_id: 9997,
+    username: "daria_growth",
+    name: "Daria",
+    age: 23,
+    role: "Growth Marketer",
+    tags: ["Content Creation", "Shitposting", "Spontaneous Trips", "Coffee"],
+    ai_facts: [
+      "views scrolling TikTok as vital industry research",
+      "A/B tests their Tinder bio for maximum CTR",
+      "knows exactly when a trend goes out of style"
+    ],
+    bio: "Building viral memes, scalable pipelines, and searching for crazy founders.",
+    photo_url: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=300&auto=format&fit=crop"
+  },
+  {
+    telegram_id: 9998,
+    username: "gleb_ai",
+    name: "Gleb",
+    age: 25,
+    role: "AI ML Engineer",
+    tags: ["AI & Automation", "Late Night Coding", "Crypto", "Deep Talks"],
+    ai_facts: [
+      "spends $200/month on cloud GPU instances",
+      "built an AI bot that replies to their mom",
+      "believes AGI is coming next Tuesday"
+    ],
+    bio: "Prompting Llama, training neural networks, and drinking matcha green tea non-stop.",
+    photo_url: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=300&auto=format&fit=crop"
+  },
+  {
+    telegram_id: 9999,
+    username: "vera_invest",
+    name: "Vera",
+    age: 27,
+    role: "Angel VC Investor",
+    tags: ["Startups", "Indie Hacking", "Deep Talks", "Aesthetics & Art"],
+    ai_facts: [
+      "asks for pitch decks instead of greeting notes",
+      "invests in startups that write in pure Tailwind",
+      "can spot a pre-seed red flag in 10 seconds"
+    ],
+    bio: "Looking for indie hackers, builders, and high-energy startups.",
+    photo_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=300&auto=format&fit=crop"
   }
 ];
 
@@ -845,6 +905,110 @@ export const translateProfile = async (
           "has watched Interstellar over fifteen times",
           "creates oddly specific Spotify playlists for dog walking",
           "is deeply afraid of voice messages longer than 30s"
+        ]
+      };
+    }
+  }
+
+  if (un.includes('artur_pm')) {
+    if (targetLang === 'ru') {
+      return {
+        role: "Проджект Менеджер",
+        bio: "Одержим оптимизацией бэклога, сайд-проектами и крафтовым пивом.",
+        tags: ["Стартапы", "Умные беседы", "Ночной кодинг", "Кофеман"],
+        ai_facts: [
+          "создал шаблон в Notion для планирования свиданий",
+          "отправляет фоллоу-апы после обычных посиделок с друзьями",
+          "пьет по два эспрессо подряд без остановки"
+        ]
+      };
+    } else {
+      return {
+        role: "Product Manager",
+        bio: "Obsessed with backlog optimization, side projects, and craft beer.",
+        tags: ["Startups", "Deep Talks", "Late Night Coding", "Coffee"],
+        ai_facts: [
+          "has a Notion template for their romantic life",
+          "sends follow-ups to casual conversations",
+          "drinks double espressos back-to-back"
+        ]
+      };
+    }
+  }
+
+  if (un.includes('daria_growth')) {
+    if (targetLang === 'ru') {
+      return {
+        role: "Гроуз Маркетолог",
+        bio: "Создаю вирусные мемы, масштабируемые воронки и ищу безбашенных фаундеров.",
+        tags: ["Создание контента", "Шитпостинг", "Спонтанность", "Кофеман"],
+        ai_facts: [
+          "считает скроллинг тиктока важным профессиональным исследованием",
+          "проводит A/B тесты своего био в тиндере для максимального CTR",
+          "знает с точностью до секунды, когда мем выходит из моды"
+        ]
+      };
+    } else {
+      return {
+        role: "Growth Marketer",
+        bio: "Building viral memes, scalable pipelines, and searching for crazy founders.",
+        tags: ["Content Creation", "Shitposting", "Spontaneous Trips", "Coffee"],
+        ai_facts: [
+          "views scrolling TikTok as vital industry research",
+          "A/B tests their Tinder bio for maximum CTR",
+          "knows exactly when a trend goes out of style"
+        ]
+      };
+    }
+  }
+
+  if (un.includes('gleb_ai')) {
+    if (targetLang === 'ru') {
+      return {
+        role: "Разработчик AI / ML",
+        bio: "Пишу промпты к Llama, тренирую нейросети и безостановочно пью зеленую матчу.",
+        tags: ["AI и автоматизация", "Ночной кодинг", "Крипта", "Умные беседы"],
+        ai_facts: [
+          "тратит по $200 в месяц на облачные видеокарты для тестов",
+          "написал бота, который автоматически отвечает на сообщения мамы",
+          "искренне верит, что сильный ИИ появится в следующий вторник"
+        ]
+      };
+    } else {
+      return {
+        role: "AI ML Engineer",
+        bio: "Prompting Llama, training neural networks, and drinking matcha green tea non-stop.",
+        tags: ["AI & Automation", "Late Night Coding", "Crypto", "Deep Talks"],
+        ai_facts: [
+          "spends $200/month on cloud GPU instances",
+          "built an AI bot that replies to their mom",
+          "believes AGI is coming next Tuesday"
+        ]
+      };
+    }
+  }
+
+  if (un.includes('vera_invest')) {
+    if (targetLang === 'ru') {
+      return {
+        role: "Ангельский Инвестор",
+        bio: "Ищу инди-хакеров, билдеров и заряженные стартапы на ранней стадии.",
+        tags: ["Стартапы", "Инди-хакинг", "Умные беседы", "Эстетика и Арт"],
+        ai_facts: [
+          "просит питч-дек вместо простого 'привет' в переписке",
+          "инвестирует только в проекты, написанные на чистом Tailwind",
+          "видит тревожные звоночки в бизнес-модели стартапа за 10 секунд"
+        ]
+      };
+    } else {
+      return {
+        role: "Angel VC Investor",
+        bio: "Looking for indie hackers, builders, and high-energy startups.",
+        tags: ["Startups", "Indie Hacking", "Deep Talks", "Aesthetics & Art"],
+        ai_facts: [
+          "asks for pitch decks instead of greeting notes",
+          "invests in startups that write in pure Tailwind",
+          "can spot a pre-seed red flag in 10 seconds"
         ]
       };
     }
