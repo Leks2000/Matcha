@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, ArrowRight, User, Check, RefreshCw, Zap } from 'lucide-react';
-import WebApp from '@twa-dev/sdk';
-import { generateAiFacts, onboardUser } from '../lib/api';
 
 interface OnboardingViewProps {
   onComplete: (onboardedUser: any) => void;
@@ -43,9 +41,17 @@ export default function OnboardingView({ onComplete }: OnboardingViewProps) {
   const generateFacts = async () => {
     setFactsLoading(true);
     try {
-      const facts = await generateAiFacts(role, selectedTags);
-      if (facts && facts.length) {
-        setAiFacts(facts);
+      const response = await fetch('/api/user/generate-facts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role,
+          tags: selectedTags
+        })
+      });
+      const data = await response.json();
+      if (data.success && data.ai_facts) {
+        setAiFacts(data.ai_facts);
       } else {
         setAiFacts([
           "probably has 12 unfinished side projects",
@@ -90,19 +96,20 @@ export default function OnboardingView({ onComplete }: OnboardingViewProps) {
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      const tgUser = WebApp.initDataUnsafe?.user;
-      if (!tgUser?.id || !tgUser?.username) throw new Error('Telegram user unavailable');
-      const user = await onboardUser({
-        telegram_id: tgUser.id,
-        username: tgUser.username,
-        name,
-        role,
-        tags: selectedTags,
-        ai_facts: aiFacts
+      const response = await fetch('/api/user/onboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          role,
+          tags: selectedTags,
+          ai_facts: aiFacts
+        })
       });
-      if (user) {
+      const data = await response.json();
+      if (data.success) {
         setTimeout(() => {
-          onComplete(user);
+          onComplete(data.user);
           setIsLoading(false);
         }, 600);
       }
