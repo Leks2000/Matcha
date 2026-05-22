@@ -54,15 +54,22 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
   const [uploadLoading, setUploadLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
-  // Pull TG avatar url automatically as default if it exists
+  // Pull TG details automatically as default if they exist
   useEffect(() => {
     try {
-      const tgPhoto = WebApp.initDataUnsafe?.user?.photo_url || "";
-      if (tgPhoto) {
-        setPhotoUrl(tgPhoto);
+      const tgUser = WebApp.initDataUnsafe?.user;
+      if (tgUser) {
+        if (tgUser.first_name) {
+          setName(tgUser.first_name + (tgUser.last_name ? " " + tgUser.last_name : ""));
+        } else if (tgUser.username) {
+          setName(tgUser.username);
+        }
+        if (tgUser.photo_url) {
+          setPhotoUrl(tgUser.photo_url);
+        }
       }
     } catch (e) {
-      console.log("Error finding TG photo_url:", e);
+      console.log("Error finding TG user details:", e);
     }
   }, []);
 
@@ -363,7 +370,7 @@ export default function OnboardingView({ telegramId, telegramUsername, onComplet
                       onClick={handleAiChatSubmit}
                       className={`w-full h-[50px] rounded-[100px] font-extrabold uppercase tracking-wider text-xs flex items-center justify-center gap-2 transition cursor-pointer ${
                         aiChatInput.trim() && !aiChatLoading
-                          ? 'bg-[#1A1A1A] text-white hover:opacity-95 shadow-sm'
+                          ? 'bg-[#00C896] text-white hover:opacity-95 shadow-sm'
                           : 'bg-black/[0.04] border border-transparent text-[#9E9E9E] cursor-not-allowed'
                       }`}
                     >

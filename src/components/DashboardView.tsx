@@ -31,6 +31,7 @@ export default function DashboardView({
   const [isSuperMatching, setIsSuperMatching] = useState(false);
   const [superMatchedProfile, setSuperMatchedProfile] = useState<any | null>(null);
   const [superMatchVibeReason, setSuperMatchVibeReason] = useState("");
+  const [showEmptyDeckNotice, setShowEmptyDeckNotice] = useState(false);
   
   // Immersive top filter select and dual-mode layout for cards (facts vs visual radar chart)
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('All');
@@ -302,7 +303,7 @@ export default function DashboardView({
     }
 
     if (profiles.length === 0) {
-      alert("No active profiles loaded in wave simulator yet!");
+      setShowEmptyDeckNotice(true);
       return;
     }
 
@@ -558,14 +559,14 @@ export default function DashboardView({
           <button
             onClick={handleTriggerAiSuperMatch}
             disabled={isSuperMatching}
-            className="text-[9.5px] font-black text-[#D19200] hover:text-[#B37B00] flex items-center gap-1.5 cursor-pointer transition-all duration-300 hover:scale-105 active:scale-95 uppercase tracking-wider py-0.5 select-none"
+            className="bg-[#00C896] hover:bg-[#00B285] text-white px-3.5 py-1.5 rounded-full font-black text-[10px] uppercase tracking-wider flex items-center gap-1.5 transition-all duration-300 hover:scale-[1.03] active:scale-95 shadow-xs border-none cursor-pointer select-none"
             title="Spend 5 sparks to trigger AI Supermatch pairing"
           >
             {isSuperMatching ? (
-              <div className="w-3 h-3 rounded-full border-2 border-[#D19200] border-t-transparent animate-spin" />
+              <div className="w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
             ) : (
               <>
-                <Sparkles className="h-3.5 w-3.5 text-[#D19200] fill-amber-300/10 animate-[pulse_1.5s_infinite] stroke-[2.5]" />
+                <Sparkles className="h-3.5 w-3.5 text-amber-300 fill-amber-300/30 animate-[pulse_1.5s_infinite] stroke-[2.5]" />
                 <span>AI Super-Match (5⚡)</span>
               </>
             )}
@@ -1200,6 +1201,54 @@ export default function DashboardView({
               </p>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Empty Deck / No Active Candidates Informative Modal overlay */}
+      <AnimatePresence>
+        {showEmptyDeckNotice && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white border border-[#E8F5EE] rounded-[28px] p-6 max-w-sm w-full text-center space-y-4 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200"
+            >
+              <button 
+                onClick={() => setShowEmptyDeckNotice(false)}
+                className="absolute right-4 top-4 text-neutral-400 hover:text-neutral-600 transition cursor-pointer"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+
+              <div className="relative">
+                <div className="relative w-12 h-12 rounded-full bg-[#00C896]/10 flex items-center justify-center text-[#00C896] mx-auto">
+                  <Sparkles className="h-6 w-6 stroke-[2]" />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <h3 className="font-extrabold text-[#1A1A1A] text-[17px] leading-tight tracking-tight font-display">
+                  {appLanguage === 'ru' ? 'Все анкеты просмотрены! ⚡' : 'All Vibe Waves Reviewed! ⚡'}
+                </h3>
+                <p className="text-[12px] text-neutral-500 font-bold leading-relaxed px-1">
+                  {appLanguage === 'ru' 
+                    ? 'Вы просмотрели всю актуальную колоду. Нажмите на кнопку "Сбросить и начать заново" ниже, чтобы перезагрузить анкеты и запустить AI Matcher по новой!' 
+                    : 'You have swiped through all available cards. Click the button below to reload and activate the AI Supermatch filters!'}
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  setShowEmptyDeckNotice(false);
+                  handleResetDeck();
+                }}
+                className="w-full h-[46px] rounded-xl bg-[#00C896] hover:bg-[#00B285] text-white font-extrabold text-xs uppercase tracking-wider flex items-center justify-center cursor-pointer transition duration-200 border-none shadow-sm"
+              >
+                {appLanguage === 'ru' ? 'Сбросить и начать заново 🌊' : 'Reset Deck & Replay 🌊'}
+              </button>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

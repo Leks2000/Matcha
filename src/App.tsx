@@ -712,9 +712,26 @@ export default function App() {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -20, opacity: 0 }}
                   transition={{ type: "spring", stiffness: 280, damping: 24 }}
-                  className="space-y-5 flex flex-col h-full"
+                  className="space-y-5 flex flex-col pb-16"
                   id="profile-screen-me"
                 >
+                  {/* Quick Return and Screen Title Header */}
+                  <div className="flex items-center justify-between pb-1 pt-1 border-b border-black/[0.03]">
+                    <button
+                      onClick={() => {
+                        try { WebApp.HapticFeedback.impactOccurred('light'); } catch (e) {}
+                        setMobileTab('discover');
+                      }}
+                      className="h-8 px-3.5 rounded-full bg-[#00C896] hover:bg-[#00B285] text-white font-extrabold text-[10.5px] uppercase tracking-wider transition-all duration-150 flex items-center gap-1.5 cursor-pointer shadow-xs select-none active:scale-[0.97]"
+                    >
+                      <Sparkles className="h-3 w-3 stroke-[3] text-amber-200 fill-amber-200/20" />
+                      <span>← {appLanguage === 'ru' ? "Назад к анкетам" : "Back to Discover"}</span>
+                    </button>
+                    <span className="text-[10px] font-black font-mono text-zinc-400 uppercase tracking-widest mr-1">
+                      {appLanguage === 'ru' ? "ПРОФИЛЬ" : "MY PROFILE"}
+                    </span>
+                  </div>
+
                   {/* Identity Header */}
                   <div className="text-center space-y-3 pt-2">
                     <div className="relative w-24 h-24 mx-auto cursor-pointer group">
@@ -971,49 +988,6 @@ export default function App() {
                       <Check className="h-4 w-4 text-[#1A7A55]" />
                       <span>Confirm Edited Facts</span>
                     </button>
-                  </div>
-
-                  {/* AI Conversational Facts Assistant (Chat and neuron-update facts) */}
-                  <div className="bg-[#1A1A1A] text-white p-5 rounded-[28px] space-y-3.5 shadow-md relative overflow-hidden">
-                    <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-[#00C896]/10 blur-xl rounded-full" />
-                    
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="p-1 bg-[#00C896]/20 text-[#00C896] rounded-lg">
-                          <MessageSquare className="h-4 w-4" />
-                        </span>
-                        <h3 className="text-sm font-black tracking-tight text-white">Groq AI Assist Chat</h3>
-                      </div>
-                      <p className="text-[10.5px] text-zinc-400 leading-normal font-medium">
-                        Write everything about yourself conversationally (habits, hobbies, tea choice) and our neuron engine will rewrite your 3 facts!
-                      </p>
-                    </div>
-
-                    <div className="space-y-2 pt-1">
-                      <textarea
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        className="w-full min-h-[72px] p-3 bg-white/[0.08] border border-white/[0.08] rounded-xl text-[12px] text-white placeholder-zinc-500 focus:outline-none focus:border-[#00C896] resize-none"
-                        placeholder="I drink matcha late at night, sleep with a podcast, lost money on dogicoins, and build interfaces..."
-                      />
-                      
-                      <button
-                        onClick={handleAiFactsChat}
-                        disabled={chatLoading || !chatInput.trim()}
-                        className={`w-full h-[38px] rounded-xl font-bold uppercase tracking-wider text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                          chatInput.trim()
-                            ? 'bg-[#00C896] text-white hover:opacity-95'
-                            : 'bg-white/[0.05] text-zinc-500 cursor-not-allowed'
-                        }`}
-                      >
-                        {chatLoading ? (
-                          <div className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                        ) : (
-                          <Send className="h-3.5 w-3.5" />
-                        )}
-                        <span>{chatLoading ? "Analyzing traits..." : "Rewrite Facts via AI"}</span>
-                      </button>
-                    </div>
                   </div>
 
                   {/* Growth Block: "Invite a founder" - realign position */}

@@ -430,15 +430,36 @@ export const generateAiFacts = async (
   role: string, 
   tags: string[]
 ): Promise<string[]> => {
-  const fallback = [
+  const fallbackPool = [
     "regularly stays up until 3AM exploring things",
     "can drink matcha or coffee at any time of day",
-    "prefers texting with memes over actual language"
+    "prefers texting with memes over actual language",
+    "has custom stickers for every friend group situation",
+    "secretly believes AI will build their entire startup",
+    "thinks email signatures are incredibly passive-aggressive",
+    "can explain the entire lore of web3 in 30 seconds",
+    "never replies to texts in under 12 hours unless vital",
+    "lost 80% on dogcoins and bought back in anyway",
+    "has a folder of 4,000 cat memes ready to share",
+    "convinced that lavender tea cures low battery",
+    "physically cannot sleep without a podcast on",
+    "books flights randomly when feeling slightly bored",
+    "knows exactly 4 card tricks but does them constantly",
+    "thinks tea is warm leaf juice and prefers espresso",
+    "always ready for spontaneous matchas in local hubs",
+    "would argue endlessly about Tailwind versus pure CSS",
+    "creates oddly specific Spotify playlists for pet walking",
+    "is deeply afraid of voice messages longer than 30s",
+    "terminally online and speaks mostly in sarcasm",
+    "always ready to live on coffee, matcha, and pure hype"
   ];
+
+  const shuffled = [...fallbackPool].sort(() => 0.5 - Math.random());
+  const fallback = shuffled.slice(0, 3);
 
   const apiKey = (import.meta as any).env.VITE_GROQ_API_KEY;
   if (!apiKey) {
-    console.warn("VITE_GROQ_API_KEY is not defined. Using offline fallback facts.");
+    console.warn("VITE_GROQ_API_KEY is not defined. Using randomized offline fallback facts.");
     return fallback;
   }
 
@@ -490,15 +511,30 @@ Example: ["can drink matcha at 2AM", "usually walks around listening to synthwav
 export const generateFactsFromChat = async (
   userDescription: string
 ): Promise<string[]> => {
-  const fallback = [
+  const fallbackPool = [
     "prefers casual talks over long voice messages",
     "knows exactly when a meme format dies",
-    "always ready for spontaneous matchas"
+    "always ready for spontaneous matchas",
+    "terminally online and speaks mostly in sarcasm",
+    "has custom stickers for every friend group situation",
+    "lost 80% on dogcoins and bought back in anyway",
+    "buys expensive records instead of grocery limits",
+    "never replies to texts in under 12 hours unless vital",
+    "would argue endlessly about Tailwind versus pure CSS",
+    "physically cannot sleep without a podcast on",
+    "books flights randomly when feeling slightly bored",
+    "convinced that lavender tea cures low battery",
+    "has watched Interstellar over fifteen times",
+    "always says 'good vibes' ironically to friends",
+    "thinks email signatures are incredibly passive-aggressive"
   ];
+
+  const shuffled = [...fallbackPool].sort(() => 0.5 - Math.random());
+  const fallback = shuffled.slice(0, 3);
 
   const apiKey = (import.meta as any).env.VITE_GROQ_API_KEY;
   if (!apiKey) {
-    console.warn("VITE_GROQ_API_KEY is not defined.");
+    console.warn("VITE_GROQ_API_KEY is not defined. Using randomized chat fallback facts.");
     return fallback;
   }
 

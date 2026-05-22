@@ -1,6 +1,6 @@
-import React from 'react';
-import { Flame, Crown, Zap } from 'lucide-react';
-import { motion } from 'motion/react';
+import React, { useState } from 'react';
+import { Flame, Crown, Zap, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface TelegramFrameProps {
   children: React.ReactNode;
@@ -15,6 +15,8 @@ export default function TelegramFrame({
   isPremium,
   matchaSparks
 }: TelegramFrameProps) {
+  const [showSparksModal, setShowSparksModal] = useState(false);
+
   return (
     <div className="min-h-screen bg-[#F5F5F0] text-[#1A1A1A] flex items-center justify-center font-sans overflow-x-hidden relative">
       
@@ -63,7 +65,8 @@ export default function TelegramFrame({
               <motion.div 
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
-                className="flex items-center gap-1.5 cursor-pointer text-[#D19200] group select-none relative"
+                onClick={() => setShowSparksModal(true)}
+                className="flex items-center gap-1.5 cursor-pointer text-[#D19200] group select-none relative bg-amber-500/5 hover:bg-amber-500/10 px-2 py-1 rounded-full border border-amber-500/10 transition"
                 title="Your Matcha Sparks balance"
               >
                 {/* Clean, background-free active Zap icon */}
@@ -82,6 +85,67 @@ export default function TelegramFrame({
           {children}
         </div>
       </div>
+
+      {/* Matcha Sparks Educational Modal overlay */}
+      <AnimatePresence>
+        {showSparksModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white border border-[#E8F5EE] rounded-[28px] p-6 max-w-xs w-full text-center space-y-4 shadow-2xl relative"
+            >
+              <button 
+                onClick={() => setShowSparksModal(false)}
+                className="absolute right-4 top-4 text-neutral-400 hover:text-neutral-600 transition"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+
+              <div className="relative">
+                <div className="relative flex items-center justify-center text-[#D19200] mx-auto">
+                  <Zap className="h-10 w-10 stroke-[2.5] fill-amber-300/10 animate-[pulse_2s_infinite]" />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="font-extrabold text-[#1A1A1A] text-lg leading-none tracking-tight">
+                  Matcha Sparks ⚡
+                </h3>
+                <p className="text-[11px] text-neutral-500 font-bold leading-relaxed">
+                  Ваша энергия премиального подбора / Your energy for premium matches
+                </p>
+              </div>
+
+              <div className="border-t border-black/[0.04] pt-3 text-left space-y-3.5">
+                <div className="flex gap-2.5 items-start">
+                  <span className="text-[#00C896] font-mono text-sm font-black mt-0.5">⚡</span>
+                  <p className="text-[11.5px] text-neutral-600 font-bold leading-normal">
+                    <span className="font-black text-[#1A1A1A]">AI Super-Match (5⚡):</span> Моментальный подбор кандидатов с пиковым совпадением по вайбу. <br/>
+                    <span className="text-neutral-400 font-semibold font-mono text-[10px] uppercase">Spend 5⚡ to instantly locate peak overlaps on node layers.</span>
+                  </p>
+                </div>
+
+                <div className="flex gap-2.5 items-start">
+                  <span className="text-[#00C896] font-mono text-sm font-black mt-0.5">🎁</span>
+                  <p className="text-[11.5px] text-neutral-600 font-bold leading-normal">
+                    <span className="font-black text-[#1A1A1A]">Как получить / How to earn:</span> Приглашайте друзей через <span className="font-extrabold text-[#00C896]">PROFILE</span> и забирайте <span className="text-[#00C896] font-black">+10⚡ Sparks</span> за каждого нового основателя! <br/>
+                    <span className="text-neutral-400 font-semibold font-mono text-[10px] uppercase">Score +10⚡ Sparks for every founder that joins your wave.</span>
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowSparksModal(false)}
+                className="w-full h-[44px] rounded-xl bg-[#00C896] hover:bg-[#00B285] text-white font-extrabold text-xs uppercase tracking-wider flex items-center justify-center cursor-pointer transition duration-200 border-none shadow-sm"
+              >
+                Закрыть / Close
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
