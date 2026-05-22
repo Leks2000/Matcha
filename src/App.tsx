@@ -19,6 +19,7 @@ import {
   Check
 } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
+import { getCurrentUser, resetUserSwipes } from './lib/api';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -45,9 +46,44 @@ export default function App() {
 
   const fetchCurrentUserAndConfig = async () => {
     try {
-      const response = await fetch('/api/user/me');
-      const data = await response.json();
-      setCurrentUser(data);
+      const tgUser = WebApp.initDataUnsafe?.user;
+      const tgId = tgUser?.id || 242424;
+      const tgUsername = tgUser?.username || "test_user";
+      const tgFirstName = tgUser?.first_name || "Jason";
+
+      const user = await getCurrentUser(tgId);
+      if (user) {
+        setCurrentUser({
+          id: user.id,
+          telegram_id: user.telegram_id,
+          username: user.username || tgUsername,
+          name: user.name || tgFirstName,
+          role: user.role || "Builder / Developer",
+          tags: user.tags || [],
+          ai_facts: user.ai_facts || [],
+          streakDays: 14,
+          matchesToday: 8,
+          isPremium: false,
+          priorityPoints: 0
+        });
+        setHasOnboarded(true);
+      } else {
+        // Build dynamic empty/starter user structure so onboarding works properly
+        setCurrentUser({
+          id: "",
+          telegram_id: tgId,
+          username: tgUsername,
+          name: tgFirstName,
+          role: "Builder / Developer",
+          tags: ["AI & Automation", "Indie Hacking", "Coffee"],
+          ai_facts: [],
+          streakDays: 14,
+          matchesToday: 0,
+          isPremium: false,
+          priorityPoints: 0
+        });
+        setHasOnboarded(false);
+      }
     } catch (err) {
       console.error("Configuration loading failed:", err);
     }
@@ -75,7 +111,9 @@ export default function App() {
 
   const handleResetDemo = async () => {
     try {
-      await fetch('/api/debug/reset', { method: 'POST' });
+      if (currentUser?.id) {
+        await resetUserSwipes(currentUser.id);
+      }
       await fetchCurrentUserAndConfig();
       setMobileTab('discover');
       setInviteFeedback("");
@@ -88,7 +126,7 @@ export default function App() {
   // Grow feature: Invite referral trigger
   const handleInviteAndRefer = async () => {
     if (!currentUser) return;
-    const refUrl = `t.me/matchabot?start=REF_${currentUser.id}`;
+    const refUrl = `t.me/matchabot?start=REF_${currentUser.telegram_id}`;
     
     // Copy the real link safely to clipboard
     try {
@@ -99,25 +137,13 @@ export default function App() {
       console.error("Clipboard copy failed:", err);
     }
 
-    try {
-      // Simulate real user registering using referral URL: award both +5 Priority points
-      const response = await fetch('/api/user/refer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ referrerId: currentUser.id })
-      });
-      const data = await response.json();
-      if (data.success && currentUser) {
-        setInviteFeedback("+5 Priority Boost Activated!");
-        setCurrentUser({
-          ...currentUser,
-          priorityPoints: data.priorityPoints
-        });
-        setTimeout(() => setInviteFeedback(""), 3000);
-      }
-    } catch (e) {
-      console.error(e);
-    }
+    // Direct client simulation of awarding dynamic invite boosts points
+    setInviteFeedback("+5 Priority Boost Activated!");
+    setCurrentUser(prev => prev ? {
+      ...prev,
+      priorityPoints: prev.priorityPoints + 5
+    } : null);
+    setTimeout(() => setInviteFeedback(""), 3000);
   };
 
   if (!currentUser) {
@@ -144,7 +170,11 @@ export default function App() {
       onReset={handleResetDemo}
     >
       {!hasOnboarded ? (
-        <OnboardingView onComplete={handleOnboardingComplete} />
+        <OnboardingView 
+          telegramId={currentUser.telegram_id} 
+          telegramUsername={currentUser.username} 
+          onComplete={handleOnboardingComplete} 
+        />
       ) : (
         <div className="flex-1 flex flex-col justify-between h-full bg-[#F0F0EB] overflow-hidden relative" id="mobile-applet-mount">
           

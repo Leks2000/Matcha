@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/re
 import { Sparkles, Heart, X, MessageSquare } from 'lucide-react';
 import { UserProfile, CurrentUser } from '../types';
 import WebApp from '@twa-dev/sdk';
+import { getProfiles, recordSwipe, getVibeReason, resetUserSwipes } from '../lib/api';
 
 interface DashboardViewProps {
   currentUser: CurrentUser;
@@ -15,12 +16,12 @@ export default function DashboardView({
   onOpenPremium,
   onUpdateCurrentUser
 }: DashboardViewProps) {
-  const [profiles, setProfiles] = useState<UserProfile[]>([]);
+  const [profiles, setProfiles] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [vibeReasonText, setVibeReasonText] = useState("");
   const [vibeScore, setVibeScore] = useState<number | null>(null);
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
-  const [matchedUser, setMatchedUser] = useState<UserProfile | null>(null);
+  const [matchedUser, setMatchedUser] = useState<any | null>(null);
   const [typewriterText, setTypewriterText] = useState("");
 
   const cardWrapperRef = useRef<HTMLDivElement>(null);
@@ -35,8 +36,7 @@ export default function DashboardView({
   // Fetch matchable cards
   const fetchDeck = async () => {
     try {
-      const resDeck = await fetch('/api/profiles');
-      const dataDeck = await resDeck.json();
+      const dataDeck = await getProfiles(currentUser.id, currentUser.tags);
       setProfiles(dataDeck);
     } catch (err) {
       console.error("Failed to load swipe profiles:", err);
@@ -44,8 +44,10 @@ export default function DashboardView({
   };
 
   useEffect(() => {
-    fetchDeck();
-  }, []);
+    if (currentUser?.id) {
+      fetchDeck();
+    }
+  }, [currentUser?.id]);
 
   const activeProfile = profiles[currentIndex];
 
@@ -66,18 +68,17 @@ export default function DashboardView({
       setVibeReasonText("");
       setTypewriterText("");
       try {
-        const response = await fetch('/api/match/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ targetId: activeProfile.id })
-        });
-        const data = await response.json();
+        const vibeReason = await getVibeReason(currentUser.tags, activeProfile.tags);
 
         if (!isSubscribed) return;
 
-        const resultText = data.vibeReason || "mutual caffeine and startup obsession is highly probable.";
+        const resultText = vibeReason || "mutual caffeine and startup obsession is highly probable.";
         setVibeReasonText(resultText);
-        setVibeScore(data.vibeScore || 9.1);
+
+        // Calculate a meaningful visual score based on tag overlap
+        const intersection = (activeProfile.tags || []).filter((t: string) => currentUser.tags.includes(t));
+        const calculatedScore = Math.min(6.5 + (intersection.length * 1.1) + Math.random() * 0.4, 9.9);
+        setVibeScore(calculatedScore);
 
         // Run typewriter on the single humorous vibe reason sentence on the card 
         let currentLetterIdx = 0;
@@ -111,7 +112,7 @@ export default function DashboardView({
       isSubscribed = false;
       if (typeInterval) clearInterval(typeInterval);
     };
-  }, [currentIndex, activeProfile]);
+  }, [currentIndex, activeProfile, currentUser?.tags]);
 
   // Execute card reactions
   const executeSwipeWithHaptics = async (direction: 'left' | 'right') => {
@@ -129,14 +130,10 @@ export default function DashboardView({
     }
 
     try {
-      const response = await fetch('/api/match/swipe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetId: activeProfile.id, direction })
-      });
-      const data = await response.json();
+      const apiDirection = direction === 'right' ? 'like' : 'pass';
+      const res = await recordSwipe(currentUser.id, activeProfile.id, apiDirection);
 
-      if (direction === 'right' && data.match) {
+      if (direction === 'right' && res.match) {
         try {
           WebApp.HapticFeedback.notificationOccurred('success');
         } catch (e) {}
@@ -174,12 +171,9 @@ export default function DashboardView({
 
   const handleResetDeck = async () => {
     try {
-      await fetch('/api/debug/reset', { method: 'POST' });
-      const resMe = await fetch('/api/user/me');
-      const dataMe = await resMe.json();
-      onUpdateCurrentUser(dataMe);
+      await resetUserSwipes(currentUser.id);
       setCurrentIndex(0);
-      fetchDeck();
+      await fetchDeck();
     } catch (err) {
       console.error("Failed to reset wave simulation:", err);
     }

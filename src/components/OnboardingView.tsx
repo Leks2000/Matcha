@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, ArrowRight, User, Check, RefreshCw, Zap } from 'lucide-react';
 
+import { generateAiFacts, onboardUser } from '../lib/api';
+import WebApp from '@twa-dev/sdk';
+
 interface OnboardingViewProps {
+  telegramId: number;
+  telegramUsername: string;
   onComplete: (onboardedUser: any) => void;
 }
 
@@ -28,7 +33,7 @@ const AVAILABLE_INTERESTS = [
   "Deep Talks"
 ];
 
-export default function OnboardingView({ onComplete }: OnboardingViewProps) {
+export default function OnboardingView({ telegramId, telegramUsername, onComplete }: OnboardingViewProps) {
   const [step, setStep] = useState(1);
   const [name, setName] = useState("Jason");
   const [role, setRole] = useState("Builder / Developer");
@@ -37,28 +42,12 @@ export default function OnboardingView({ onComplete }: OnboardingViewProps) {
   const [factsLoading, setFactsLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Trigger Gemini facts generation when transitioning to Step 3
+  // Trigger Groq facts generation when transitioning to Step 3
   const generateFacts = async () => {
     setFactsLoading(true);
     try {
-      const response = await fetch('/api/user/generate-facts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role,
-          tags: selectedTags
-        })
-      });
-      const data = await response.json();
-      if (data.success && data.ai_facts) {
-        setAiFacts(data.ai_facts);
-      } else {
-        setAiFacts([
-          "probably has 12 unfinished side projects",
-          "sends voice messages at 2AM about code",
-          "survives solely on caffeine and pure hope"
-        ]);
-      }
+      const facts = await generateAiFacts(role, selectedTags);
+      setAiFacts(facts);
     } catch (err) {
       console.error(err);
       setAiFacts([
@@ -96,22 +85,27 @@ export default function OnboardingView({ onComplete }: OnboardingViewProps) {
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/user/onboard', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          role,
-          tags: selectedTags,
-          ai_facts: aiFacts
-        })
+      const user = await onboardUser({
+        telegram_id: telegramId,
+        username: telegramUsername,
+        name,
+        role,
+        tags: selectedTags,
+        ai_facts: aiFacts
       });
-      const data = await response.json();
-      if (data.success) {
+      if (user) {
         setTimeout(() => {
-          onComplete(data.user);
+          onComplete({
+            ...user,
+            streakDays: 14,
+            matchesToday: 8,
+            isPremium: false,
+            priorityPoints: 0
+          });
           setIsLoading(false);
         }, 600);
+      } else {
+        setIsLoading(false);
       }
     } catch (err) {
       console.error(err);
